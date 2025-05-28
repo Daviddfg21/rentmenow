@@ -8,42 +8,17 @@ RUN npm run build
 
 # Etapa 2: Construir backend
 FROM eclipse-temurin:21-jdk AS backend
-
-# Instalar Maven
 RUN apt-get update && apt-get install -y maven
-
 WORKDIR /app
 COPY pom.xml ./
 COPY src/ ./src/
-
-# Copiar frontend construido
 COPY --from=frontend /app/build ./src/main/resources/static/
-
-# Construir JAR - especificar nombre exacto
 RUN mvn clean package -DskipTests
-RUN ls -la target/
-RUN mv target/rentmenow-*.jar target/app.jar
 
-# Etapa 3: Ejecutar
+# Etapa 3: Ejecutar - COPIA DIRECTA
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-
-# Copiar JAR con nombre específico
-COPY --from=backend /app/target/app.jar app.jar
-
-# Verificar que el JAR existe
-RUN ls -la app.jar
-
-# Variables de entorno
+COPY --from=backend /app/target/rentmenow-0.0.1-SNAPSHOT.jar app.jar
 ENV SPRING_PROFILES_ACTIVE=prod
-
-# Exponer puerto
 EXPOSE 8080
-
-# Ejecutar aplicación
-CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "app.jar"]
-
-# Ejecutar aplicación
-CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "app.jar"]
-
-# Rebuild forced - v2
+CMD ["java", "-jar", "app.jar"]
