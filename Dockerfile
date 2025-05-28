@@ -2,12 +2,12 @@
 FROM node:18-alpine AS frontend
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
 # Etapa 2: Construir backend
-FROM openjdk:21-jdk-slim AS backend
+FROM eclipse-temurin:21-jdk AS backend
 
 # Instalar Maven
 RUN apt-get update && apt-get install -y maven
@@ -23,7 +23,7 @@ COPY --from=frontend /app/build ./src/main/resources/static/
 RUN mvn clean package -DskipTests
 
 # Etapa 3: Ejecutar
-FROM openjdk:21-jre-slim
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Copiar JAR construido
