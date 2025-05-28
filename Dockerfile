@@ -1,41 +1,30 @@
-# Usar imagen base con Java y Node.js
-FROM node:18-alpine AS frontend-build
-
-# Construir el frontend
-WORKDIR /app/frontend
+# Etapa 1: Construir frontend
+FROM node:18-alpine AS frontend
+WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci --only=production
 COPY frontend/ ./
 RUN npm run build
 
-# Imagen base para Java
-FROM openjdk:21-jdk-slim AS backend-build
-
-# Instalar Maven
-RUN apt-get update && apt-get install -y maven
-
-# Construir el backend
+# Etapa 2: Construir backend
+FROM maven:3.9-openjdk-21 AS backend
 WORKDIR /app
 COPY pom.xml ./
 COPY src/ ./src/
-
-# Copiar el frontend construido
-COPY --from=frontend-build /app/frontend/build ./src/main/resources/static/
-
-# Construir el JAR
+# Copiar frontend construido
+COPY --from=frontend /app/build ./src/main/resources/static/
 RUN mvn clean package -DskipTests
 
-# Imagen final
+# Etapa 3: Ejecutar
 FROM openjdk:21-jre-slim
-
-# Crear directorio de trabajo
 WORKDIR /app
+COPY --from=backend /app/target/*.jar app.jar
 
-# Copiar el JAR construido
-COPY --from=backend-build /app/target/*.jar app.jar
+# Variables de entorno
+ENV SPRING_PROFILES_ACTIVE=prod
 
-# Exponer puerto (Railway usa la variable PORT)
+# Exponer puerto
 EXPOSE $PORT
 
-# Comando para ejecutar (Railway maneja el puerto automáticamente)
-CMD ["java", "-Dspring.profiles.active=prod", "-Dserver.port=$PORT", "-jar", "app.jar"]
+# Ejecutar aplicación
+CMD ["sh", "-c", "java -Dserver.port=$PORT -jar app.jar"]

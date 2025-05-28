@@ -1,0 +1,9 @@
+# Excluir archivos innecesarios del build
+node_modules/
+frontend/node_modules/
+target/
+.git/
+.mvn/
+*.log
+.DS_Store
+Thumbs.db
