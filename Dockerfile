@@ -19,15 +19,20 @@ COPY src/ ./src/
 # Copiar frontend construido
 COPY --from=frontend /app/build ./src/main/resources/static/
 
-# Construir JAR
+# Construir JAR - especificar nombre exacto
 RUN mvn clean package -DskipTests
+RUN ls -la target/
+RUN mv target/rentmenow-*.jar target/app.jar
 
 # Etapa 3: Ejecutar
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Copiar JAR construido
-COPY --from=backend /app/target/*.jar app.jar
+# Copiar JAR con nombre específico
+COPY --from=backend /app/target/app.jar app.jar
+
+# Verificar que el JAR existe
+RUN ls -la app.jar
 
 # Variables de entorno
 ENV SPRING_PROFILES_ACTIVE=prod
@@ -36,4 +41,4 @@ ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 
 # Ejecutar aplicación
-CMD ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
+CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "app.jar"]
