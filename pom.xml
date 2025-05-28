@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.4.6</version>
+		<relativePath/>
+	</parent>
+	<groupId>com.rentmenow</groupId>
+	<artifactId>rentmenow</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>rentmenow</name>
+	<description>RentMeNow - Sistema Integrado de Gestión de Alquileres</description>
+	<properties>
+		<java.version>21</java.version>
+	</properties>
+	
+	<dependencies>
+		<!-- Spring Boot Starters -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+		
+		<!-- Database -->
+		<dependency>
+			<groupId>org.mariadb.jdbc</groupId>
+			<artifactId>mariadb-java-client</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <scope>runtime</scope>
+</dependency>
+		
+		
+		<!-- JWT -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.12.3</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.12.3</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.12.3</version>
+			<scope>runtime</scope>
+		</dependency>
+		
+		<!-- DevTools y Test -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+    <plugins>
+        <!-- Spring Boot Plugin -->
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+        </plugin>
+        
+        <!-- Plugin para construir frontend automáticamente -->
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+                <execution>
+                    <id>npm-install</id>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                    <phase>generate-resources</phase>
+                    <configuration>
+                        <executable>npm</executable>
+                        <workingDirectory>${basedir}/frontend</workingDirectory>
+                        <arguments>
+                            <argument>install</argument>
+                        </arguments>
+                    </configuration>
+                </execution>
+                <execution>
+                    <id>npm-build</id>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                    <phase>generate-resources</phase>
+                    <configuration>
+                        <executable>npm</executable>
+                        <workingDirectory>${basedir}/frontend</workingDirectory>
+                        <arguments>
+                            <argument>run</argument>
+                            <argument>build</argument>
+                        </arguments>
+                    </configuration>
+                </execution>
+                <execution>
+                    <id>copy-frontend</id>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                    <phase>process-resources</phase>
+                    <configuration>
+                        <executable>cmd</executable>
+                        <workingDirectory>${basedir}</workingDirectory>
+                        <arguments>
+                            <argument>/c</argument>
+                            <argument>xcopy /E /I /Y frontend\build\* src\main\resources\static\</argument>
+                        </arguments>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+
+</project>
