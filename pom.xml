@@ -40,7 +40,7 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 		
-		<!-- Database - Solo PostgreSQL para producción -->
+		<!-- Database - Solo PostgreSQL para producciónN -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
