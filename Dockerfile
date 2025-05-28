@@ -7,24 +7,33 @@ COPY frontend/ ./
 RUN npm run build
 
 # Etapa 2: Construir backend
-FROM maven:3.9-openjdk-21 AS backend
+FROM openjdk:21-jdk-slim AS backend
+
+# Instalar Maven
+RUN apt-get update && apt-get install -y maven
+
 WORKDIR /app
 COPY pom.xml ./
 COPY src/ ./src/
+
 # Copiar frontend construido
 COPY --from=frontend /app/build ./src/main/resources/static/
+
+# Construir JAR
 RUN mvn clean package -DskipTests
 
 # Etapa 3: Ejecutar
 FROM openjdk:21-jre-slim
 WORKDIR /app
+
+# Copiar JAR construido
 COPY --from=backend /app/target/*.jar app.jar
 
 # Variables de entorno
 ENV SPRING_PROFILES_ACTIVE=prod
 
 # Exponer puerto
-EXPOSE $PORT
+EXPOSE 8080
 
 # Ejecutar aplicación
-CMD ["sh", "-c", "java -Dserver.port=$PORT -jar app.jar"]
+CMD ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
