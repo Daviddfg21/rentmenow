@@ -42,3 +42,8 @@ EXPOSE 8080
 
 # Ejecutar aplicación
 CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "app.jar"]
+
+# Ejecutar aplicación
+CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "app.jar"]
+
+# Rebuild forced - v2
