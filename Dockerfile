@@ -1,24 +1,36 @@
-# Etapa 1: Construir frontend
-FROM node:18-alpine AS frontend
-WORKDIR /app
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
+# Dockerfile simplificado para Railway
+FROM eclipse-temurin:21-jdk
 
-# Etapa 2: Construir backend
-FROM eclipse-temurin:21-jdk AS backend
-RUN apt-get update && apt-get install -y maven
+# Instalar Node.js para construir el frontend
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
+# Instalar Maven
+RUN apt-get install -y maven
+
 WORKDIR /app
+
+# Copiar y construir frontend primero
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm ci
+
+COPY frontend/ ./frontend/
+RUN cd frontend && npm run build
+
+# Copiar el build del frontend a resources/static
+RUN mkdir -p src/main/resources/static && \
+    cp -r frontend/build/* src/main/resources/static/
+
+# Copiar archivos del backend
 COPY pom.xml ./
 COPY src/ ./src/
-COPY --from=frontend /app/build ./src/main/resources/static/
+
+# Construir el JAR
 RUN mvn clean package -DskipTests
 
-# Etapa 3: Ejecutar - COPIA DIRECTA
-FROM eclipse-temurin:21-jre
-WORKDIR /app
-COPY --from=backend /app/target/rentmenow-0.0.1-SNAPSHOT.jar app.jar
-ENV SPRING_PROFILES_ACTIVE=prod
+# Exponer puerto
 EXPOSE 8080
-CMD ["java", "-jar", "app.jar"]
+
+# Comando de inicio
+CMD ["java", "-Dserver.port=${PORT:-8080}", "-Dspring.profiles.active=prod", "-jar", "target/rentmenow-0.0.1-SNAPSHOT.jar"]
