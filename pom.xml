@@ -91,67 +91,13 @@
 		</dependency>
 	</dependencies>
 
-	<build>
+<build>
     <plugins>
         <!-- Spring Boot Plugin -->
         <plugin>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-maven-plugin</artifactId>
         </plugin>
-        
-        <!-- Plugin para construir frontend automáticamente -->
-        <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>3.1.0</version>
-            <executions>
-                <execution>
-                    <id>npm-install</id>
-                    <goals>
-                        <goal>exec</goal>
-                    </goals>
-                    <phase>generate-resources</phase>
-                    <configuration>
-                        <executable>npm</executable>
-                        <workingDirectory>${basedir}/frontend</workingDirectory>
-                        <arguments>
-                            <argument>install</argument>
-                        </arguments>
-                    </configuration>
-                </execution>
-                <execution>
-                    <id>npm-build</id>
-                    <goals>
-                        <goal>exec</goal>
-                    </goals>
-                    <phase>generate-resources</phase>
-                    <configuration>
-                        <executable>npm</executable>
-                        <workingDirectory>${basedir}/frontend</workingDirectory>
-                        <arguments>
-                            <argument>run</argument>
-                            <argument>build</argument>
-                        </arguments>
-                    </configuration>
-                </execution>
-                <execution>
-                    <id>copy-frontend</id>
-                    <goals>
-                        <goal>exec</goal>
-                    </goals>
-                    <phase>process-resources</phase>
-                    <configuration>
-                        <executable>cmd</executable>
-                        <workingDirectory>${basedir}</workingDirectory>
-                        <arguments>
-                            <argument>/c</argument>
-                            <argument>xcopy /E /I /Y frontend\build\* src\main\resources\static\</argument>
-                        </arguments>
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
     </plugins>
 </build>
-
 </project>
