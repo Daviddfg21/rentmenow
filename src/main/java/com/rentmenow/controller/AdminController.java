@@ -7,6 +7,7 @@ import com.rentmenow.service.ReportService;
 import com.rentmenow.service.UserService;
 import com.rentmenow.service.CategoryService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -27,17 +28,26 @@ public class AdminController {
 		this.reportService = reportService;
 	}
 
+	// Crear headers para evitar cache
+	private HttpHeaders createNoCacheHeaders() {
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+		headers.add("Pragma", "no-cache");
+		headers.add("Expires", "0");
+		return headers;
+	}
+
 	// CRUD USUARIOS
 	@GetMapping("/users")
 	public ResponseEntity<List<UserDto>> getAllUsers() {
-		return ResponseEntity.ok(userService.getAllUsers());
+		return ResponseEntity.ok().headers(createNoCacheHeaders()).body(userService.getAllUsers());
 	}
 
 	@GetMapping("/users/{id}")
 	public ResponseEntity<?> getUserById(@PathVariable Long id) {
 		try {
 			UserDto user = userService.getUserById(id);
-			return ResponseEntity.ok(user);
+			return ResponseEntity.ok().headers(createNoCacheHeaders()).body(user);
 		} catch (RuntimeException e) {
 			return ResponseEntity.badRequest().body(e.getMessage());
 		}
@@ -66,7 +76,7 @@ public class AdminController {
 	// CRUD CATEGORÍAS
 	@GetMapping("/categories")
 	public ResponseEntity<List<Category>> getAllCategories() {
-		return ResponseEntity.ok(categoryService.getAllCategories());
+		return ResponseEntity.ok().headers(createNoCacheHeaders()).body(categoryService.getAllCategories());
 	}
 
 	@PostMapping("/categories")
@@ -99,9 +109,13 @@ public class AdminController {
 		}
 	}
 
-	// INFORME DE RESULTADOS
+	// INFORME DE RESULTADOS - CON NO-CACHE
 	@GetMapping("/reports/financial")
 	public ResponseEntity<ReportDto> getFinancialReport() {
-		return ResponseEntity.ok(reportService.generateFinancialReport());
+		System.out.println("🔄 Financial report requested - generating fresh data...");
+		ReportDto report = reportService.generateFinancialReport();
+		System.out.println("📊 Returning report: " + report);
+
+		return ResponseEntity.ok().headers(createNoCacheHeaders()).body(report);
 	}
 }
