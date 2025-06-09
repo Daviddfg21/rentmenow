@@ -46,33 +46,27 @@ public class SecurityConfig {
 				.exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(jwtAuthenticationEntryPoint))
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authz -> authz
-						// Health checks
-						.requestMatchers("/health", "/api/health").permitAll()
+						// API Endpoints que requieren ADMIN
+						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-						// Recursos estáticos del frontend
+						// API Endpoints que requieren autenticación
+						.requestMatchers("/api/rentals/**").authenticated().requestMatchers("/api/users/profile")
+						.authenticated()
+
+						// API Endpoints públicos
+						.requestMatchers("/api/auth/**").permitAll().requestMatchers("/api/properties/**").permitAll()
+						.requestMatchers("/api/users/*").permitAll().requestMatchers("/api/health").permitAll()
+						.requestMatchers("/health").permitAll()
+
+						// H2 Console (solo para desarrollo)
+						.requestMatchers("/h2-console/**").permitAll()
+
+						// Recursos estáticos
+						.requestMatchers("/static/**").permitAll().requestMatchers("/assets/**").permitAll()
+						.requestMatchers("*.js", "*.css", "*.png", "*.svg", "*.ico").permitAll()
 						.requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
-						.requestMatchers("/static/**", "/assets/**").permitAll()
-						.requestMatchers("/**/*.js", "/**/*.css", "/**/*.png", "/**/*.svg", "/**/*.ico").permitAll()
 
-						// Endpoints públicos de la API
-						.requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
-						.requestMatchers("/h2-console/**").permitAll().requestMatchers("/api/properties").permitAll()
-						.requestMatchers("/api/properties/{id}").permitAll()
-
-						// Endpoints que requieren autenticación
-						.requestMatchers("/api/admin/**").hasRole("ADMIN").requestMatchers("/api/rentals/**")
-						.authenticated().requestMatchers("/api/users/profile").authenticated()
-
-						// Todo lo demás de API requiere autenticación
-						.requestMatchers("/api/**").authenticated()
-
-						// Rutas del frontend SPA
-						.requestMatchers("/login", "/register", "/properties", "/create-property", "/rentals", "/admin",
-								"/profile")
-						.permitAll().requestMatchers("/properties/{id}", "/create-rental/{id}", "/profile/{username}")
-						.permitAll()
-
-						// Permitir todo lo demás (para el SPA)
+						// Permitir TODAS las demás rutas (para el SPA)
 						.anyRequest().permitAll())
 				.headers(headers -> headers.frameOptions().disable())
 				.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class).build();

@@ -32,17 +32,22 @@ public class AuthController {
 			authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 		} catch (BadCredentialsException e) {
-			return ResponseEntity.badRequest().body("Invalid credentials");
+			return ResponseEntity.badRequest().body("Credenciales inválidas");
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().body("Error en el login: " + e.getMessage());
 		}
 
-		User user = userService.findByUsername(loginRequest.getUsername());
-		String token = jwtUtil.generateToken(user.getUsername());
+		try {
+			User user = userService.findByUsername(loginRequest.getUsername());
+			String token = jwtUtil.generateToken(user.getUsername());
 
-		// Usar el constructor completo de UserDto con 8 parámetros
-		UserDto userDto = new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getRole(),
-				user.getFirstName(), user.getLastName(), user.getPhone(), user.getBio());
+			UserDto userDto = new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getRole(),
+					user.getFirstName(), user.getLastName(), user.getPhone(), user.getBio());
 
-		return ResponseEntity.ok(new AuthResponse(token, userDto));
+			return ResponseEntity.ok(new AuthResponse(token, userDto));
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().body("Error al generar token: " + e.getMessage());
+		}
 	}
 
 	@PostMapping("/register")
@@ -51,7 +56,9 @@ public class AuthController {
 			UserDto user = userService.createUser(registerRequest);
 			return ResponseEntity.ok(user);
 		} catch (RuntimeException e) {
-			return ResponseEntity.badRequest().body(e.getMessage());
+			return ResponseEntity.badRequest().body("Error en el registro: " + e.getMessage());
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().body("Error inesperado: " + e.getMessage());
 		}
 	}
 }
