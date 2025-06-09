@@ -13,6 +13,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
 	List<Payment> findByStatus(String status);
 
-	@Query("SELECT SUM(p.amount) FROM Payment p WHERE p.status = 'PAID'")
+	// COALESCE devuelve 0 si no hay pagos (en lugar de NULL)
+	@Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = 'PAID'")
 	BigDecimal getTotalPaidAmount();
 }
