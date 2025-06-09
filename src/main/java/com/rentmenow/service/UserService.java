@@ -34,7 +34,10 @@ public class UserService {
 		user.setUsername(request.getUsername());
 		user.setPassword(passwordEncoder.encode(request.getPassword()));
 		user.setEmail(request.getEmail());
-		user.setRole(request.getRole());
+		user.setFirstName(request.getFirstName());
+		user.setLastName(request.getLastName());
+		user.setPhone(request.getPhone());
+		user.setRole("USER");
 
 		User savedUser = userRepository.save(user);
 		return convertToDto(savedUser);
@@ -49,11 +52,19 @@ public class UserService {
 		return convertToDto(user);
 	}
 
+	public UserDto getUserByUsername(String username) {
+		User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
+		return convertToDto(user);
+	}
+
 	public UserDto updateUser(Long id, UserDto userDto) {
 		User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
 
 		user.setEmail(userDto.getEmail());
-		user.setRole(userDto.getRole());
+		user.setFirstName(userDto.getFirstName());
+		user.setLastName(userDto.getLastName());
+		user.setPhone(userDto.getPhone());
+		user.setBio(userDto.getBio());
 
 		User savedUser = userRepository.save(user);
 		return convertToDto(savedUser);
@@ -71,6 +82,7 @@ public class UserService {
 	}
 
 	private UserDto convertToDto(User user) {
-		return new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getRole());
+		return new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getFirstName(),
+				user.getLastName(), user.getPhone(), user.getBio());
 	}
 }

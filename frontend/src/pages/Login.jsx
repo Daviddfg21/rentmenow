@@ -1,9 +1,6 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
 import { LogIn, User, Lock, Eye, EyeOff } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -12,8 +9,7 @@ const Login = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
-  const navigate = useNavigate()
+  const [message, setMessage] = useState('')
 
   const handleChange = (e) => {
     setFormData({
@@ -22,21 +18,39 @@ const Login = () => {
     })
   }
 
+  const showToast = (message, type = 'success') => {
+    setMessage(message)
+    setTimeout(() => setMessage(''), 4000)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setMessage('')
 
     try {
-      const result = await login(formData)
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
       
-      if (result.success) {
-        toast.success('¡Bienvenido de vuelta!')
-        navigate('/')
+      if (response.ok) {
+        const data = await response.json()
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        showToast('¡Bienvenido de vuelta!')
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1000)
       } else {
-        toast.error(result.message)
+        const errorData = await response.text()
+        showToast(errorData || 'Error al iniciar sesión', 'error')
       }
     } catch (error) {
-      toast.error('Error al iniciar sesión')
+      showToast('Error al iniciar sesión', 'error')
     } finally {
       setLoading(false)
     }
@@ -44,6 +58,17 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-20">
+      {/* Toast Message */}
+      {message && (
+        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50">
+          <div className={`shadow-lg rounded-xl p-4 border-l-4 max-w-md ${
+            message.includes('Error') ? 'bg-red-50 border-red-500' : 'bg-green-50 border-green-500'
+          }`}>
+            <p className={message.includes('Error') ? 'text-red-800' : 'text-green-800'}>{message}</p>
+          </div>
+        </div>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -125,20 +150,10 @@ const Login = () => {
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             ¿No tienes cuenta?{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors duration-300">
+            <a href="/register" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors duration-300">
               Regístrate aquí
-            </Link>
+            </a>
           </p>
-        </div>
-
-        {/* Demo credentials */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 text-center mb-2 font-medium">Credenciales de prueba:</p>
-          <div className="text-xs text-gray-500 space-y-1">
-            <p><strong>Admin:</strong> admin / admin123</p>
-            <p><strong>Owner:</strong> owner1 / password123</p>
-            <p><strong>Tenant:</strong> tenant1 / password123</p>
-          </div>
         </div>
       </motion.div>
     </div>

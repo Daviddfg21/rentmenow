@@ -1,6 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from './context/AuthContext'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -11,68 +10,120 @@ import CreateProperty from './pages/CreateProperty'
 import Rentals from './pages/Rentals'
 import CreateRental from './pages/CreateRental'
 import AdminDashboard from './pages/AdminDashboard'
-import ProtectedRoute from './components/ProtectedRoute'
+import UserProfile from './pages/UserProfile'
 
 function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/properties" element={<Properties />} />
-            <Route path="/properties/:id" element={<PropertyDetail />} />
-            <Route 
-              path="/create-property" 
-              element={
-                <ProtectedRoute>
-                  <CreateProperty />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/rentals" 
-              element={
-                <ProtectedRoute>
-                  <Rentals />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/create-rental/:propertyId" 
-              element={
-                <ProtectedRoute>
-                  <CreateRental />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute requiredRole="ADMIN">
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#ffffff',
-                color: '#374151',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                borderRadius: '16px',
-              },
-            }}
-          />
+  const [currentPage, setCurrentPage] = useState('home')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Check authentication
+    const token = localStorage.getItem('token')
+    const userData = localStorage.getItem('user')
+    
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        setIsAuthenticated(true)
+      } catch (error) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+    }
+
+    // Simple routing based on URL
+    const path = window.location.pathname
+    console.log('Current path:', path) // Para debug
+    
+    if (path === '/login') setCurrentPage('login')
+    else if (path === '/register') setCurrentPage('register')
+    else if (path === '/properties') setCurrentPage('properties')
+    else if (path.startsWith('/properties/')) setCurrentPage('property-detail')
+    else if (path === '/create-property') setCurrentPage('create-property')
+    else if (path === '/rentals') setCurrentPage('rentals')
+    else if (path.startsWith('/create-rental/')) setCurrentPage('create-rental')
+    else if (path === '/admin') setCurrentPage('admin')
+    else if (path === '/profile') setCurrentPage('profile')
+    else setCurrentPage('home')
+
+    setLoading(false)
+  }, [])
+
+  // Escuchar cambios en la URL
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname
+      if (path === '/login') setCurrentPage('login')
+      else if (path === '/register') setCurrentPage('register')
+      else if (path === '/properties') setCurrentPage('properties')
+      else if (path.startsWith('/properties/')) setCurrentPage('property-detail')
+      else if (path === '/create-property') setCurrentPage('create-property')
+      else if (path === '/rentals') setCurrentPage('rentals')
+      else if (path.startsWith('/create-rental/')) setCurrentPage('create-rental')
+      else if (path === '/admin') setCurrentPage('admin')
+      else if (path === '/profile') setCurrentPage('profile')
+      else setCurrentPage('home')
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  const renderPage = () => {
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
         </div>
-      </Router>
-    </AuthProvider>
+      )
+    }
+
+    switch (currentPage) {
+      case 'login':
+        return <Login />
+      case 'register':
+        return <Register />
+      case 'properties':
+        return <Properties />
+      case 'property-detail':
+        return <PropertyDetail />
+      case 'create-property':
+        return isAuthenticated ? <CreateProperty /> : <Login />
+      case 'rentals':
+        return isAuthenticated ? <Rentals /> : <Login />
+      case 'create-rental':
+        return isAuthenticated ? <CreateRental /> : <Login />
+      case 'admin':
+        return isAuthenticated && user?.role === 'ADMIN' ? <AdminDashboard /> : <Home />
+      case 'profile':
+        return isAuthenticated ? <UserProfile username={user?.username} isOwnProfile={true} /> : <Login />
+      default:
+        return <Home />
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar />
+      <div className="min-h-screen">
+        {renderPage()}
+      </div>
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#ffffff',
+            color: '#374151',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            borderRadius: '16px',
+          },
+        }}
+      />
+    </div>
   )
 }
 

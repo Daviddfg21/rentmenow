@@ -1,30 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Building, Key, Users, Star, ArrowRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import api from '../services/api'
-import PropertyCard from '../components/PropertyCard'
+import { Search, Building, Key, Users, Star, ArrowRight, Mail, Phone, MapPin } from 'lucide-react'
 
 const Home = () => {
-  const [featuredProperties, setFeaturedProperties] = useState([])
-  const [stats, setStats] = useState({
-    totalProperties: 0,
-    totalRentals: 0,
-    totalUsers: 0
-  })
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    fetchFeaturedProperties()
+    // Check if user is authenticated
+    const token = localStorage.getItem('token')
+    setIsAuthenticated(!!token)
   }, [])
-
-  const fetchFeaturedProperties = async () => {
-    try {
-      const response = await api.get('/api/properties/available')
-      setFeaturedProperties(response.data.slice(0, 6))
-    } catch (error) {
-      console.error('Error fetching properties:', error)
-    }
-  }
 
   const features = [
     {
@@ -78,21 +63,23 @@ const Home = () => {
               Conectamos propietarios e inquilinos de forma segura y eficiente.
             </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
-            >
-              <Link to="/properties" className="btn-primary text-lg px-8 py-4">
-                <Search className="w-5 h-5 mr-2" />
-                Explorar Propiedades
-              </Link>
-              <Link to="/create-property" className="btn-secondary text-lg px-8 py-4">
-                <Building className="w-5 h-5 mr-2" />
-                Publicar Propiedad
-              </Link>
-            </motion.div>
+            {!isAuthenticated && (
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+                className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+              >
+                <a href="/properties" className="btn-primary text-lg px-8 py-4">
+                  <Search className="w-5 h-5 mr-2" />
+                  Explorar Propiedades
+                </a>
+                <a href="/register" className="btn-secondary text-lg px-8 py-4">
+                  <Building className="w-5 h-5 mr-2" />
+                  Unirse Gratis
+                </a>
+              </motion.div>
+            )}
           </div>
         </div>
 
@@ -158,79 +145,119 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Featured Properties */}
-      {featuredProperties.length > 0 && (
-        <section className="py-20 px-4 bg-white/50">
-          <div className="max-w-7xl mx-auto">
+      {/* CTA Section - Solo si no está autenticado */}
+      {!isAuthenticated && (
+        <section className="py-20 px-4">
+          <div className="max-w-4xl mx-auto">
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8 }}
-              className="text-center mb-16"
+              className="card p-12 text-center bg-gradient-to-r from-primary-500 to-secondary-500 text-white"
             >
-              <h2 className="text-4xl font-bold text-gray-800 mb-4">
-                Propiedades Destacadas
+              <h2 className="text-4xl font-bold mb-4">
+                ¿Listo para comenzar?
               </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                Descubre las mejores propiedades disponibles para alquilar
+              <p className="text-xl mb-8 opacity-90">
+                Únete a miles de usuarios que ya confían en RentMeNow para sus necesidades de alquiler
               </p>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-              {featuredProperties.map((property, index) => (
-                <motion.div
-                  key={property.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: index * 0.1 }}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a 
+                  href="/register" 
+                  className="bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 transform hover:scale-105"
                 >
-                  <PropertyCard property={property} />
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="text-center">
-              <Link to="/properties" className="btn-primary inline-flex items-center">
-                Ver Todas las Propiedades
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Link>
-            </div>
+                  Crear Cuenta Gratis
+                </a>
+                <a 
+                  href="/properties" 
+                  className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-primary-600 transition-all duration-300 transform hover:scale-105"
+                >
+                  Explorar Propiedades
+                </a>
+              </div>
+            </motion.div>
           </div>
         </section>
       )}
 
-      {/* CTA Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            className="card p-12 text-center bg-gradient-to-r from-primary-500 to-secondary-500 text-white"
-          >
-            <h2 className="text-4xl font-bold mb-4">
-              ¿Listo para comenzar?
-            </h2>
-            <p className="text-xl mb-8 opacity-90">
-              Únete a miles de usuarios que ya confían en RentMeNow para sus necesidades de alquiler
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link 
-                to="/register" 
-                className="bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 transform hover:scale-105"
-              >
-                Crear Cuenta Gratis
-              </Link>
-              <Link 
-                to="/properties" 
-                className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-primary-600 transition-all duration-300 transform hover:scale-105"
-              >
-                Explorar Propiedades
-              </Link>
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-16 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {/* Logo y descripción */}
+            <div className="md:col-span-2">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
+                  <Building className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold">RentMeNow</span>
+              </div>
+              <p className="text-gray-400 mb-6 max-w-md">
+                La plataforma líder en alquiler de propiedades. Conectamos propietarios e inquilinos 
+                de forma segura y eficiente en toda España.
+              </p>
+              <div className="flex space-x-4">
+                <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors duration-300 cursor-pointer">
+                  <span className="text-sm font-bold">f</span>
+                </div>
+                <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors duration-300 cursor-pointer">
+                  <span className="text-sm font-bold">t</span>
+                </div>
+                <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors duration-300 cursor-pointer">
+                  <span className="text-sm font-bold">in</span>
+                </div>
+              </div>
             </div>
-          </motion.div>
+
+            {/* Enlaces rápidos */}
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Enlaces Rápidos</h4>
+              <ul className="space-y-2">
+                <li><a href="/properties" className="text-gray-400 hover:text-white transition-colors duration-300">Propiedades</a></li>
+                <li><a href="/create-property" className="text-gray-400 hover:text-white transition-colors duration-300">Publicar Propiedad</a></li>
+                <li><a href="/rentals" className="text-gray-400 hover:text-white transition-colors duration-300">Mis Alquileres</a></li>
+                <li><a href="/login" className="text-gray-400 hover:text-white transition-colors duration-300">Iniciar Sesión</a></li>
+              </ul>
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Contacto</h4>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <Mail className="w-5 h-5 text-primary-400" />
+                  <span className="text-gray-400">info@rentmenow.com</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Phone className="w-5 h-5 text-primary-400" />
+                  <span className="text-gray-400">+34 900 123 456</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <MapPin className="w-5 h-5 text-primary-400" />
+                  <span className="text-gray-400">Madrid, España</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between">
+            <p className="text-gray-400 text-sm">
+              © 2024 RentMeNow. Todos los derechos reservados.
+            </p>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-300">
+                Política de Privacidad
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-300">
+                Términos de Servicio
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-300">
+                Cookies
+              </a>
+            </div>
+          </div>
         </div>
-      </section>
+      </footer>
     </div>
   )
 }

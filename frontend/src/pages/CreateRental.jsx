@@ -1,38 +1,51 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Key, Calendar, Euro, Building, User } from 'lucide-react'
-import api from '../services/api'
+import { ArrowLeft, Key, Calendar, Euro, Building, User, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAuth } from '../context/AuthContext'
 
 const CreateRental = () => {
-  const { propertyId } = useParams()
-  const navigate = useNavigate()
-  const { user } = useAuth()
   const [property, setProperty] = useState(null)
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [formData, setFormData] = useState({
     startDate: '',
     endDate: '',
-    monthlyRent: ''
+    monthlyRent: '',
+    requestMessage: ''
   })
 
   useEffect(() => {
-    fetchProperty()
-  }, [propertyId])
+    // Get property ID from URL
+    const pathParts = window.location.pathname.split('/')
+    const propertyId = pathParts[pathParts.length - 1]
+    
+    // Get user data
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    }
 
-  const fetchProperty = async () => {
+    fetchProperty(propertyId)
+  }, [])
+
+  const fetchProperty = async (propertyId) => {
     try {
-      const response = await api.get(`/api/properties/${propertyId}`)
-      setProperty(response.data)
-      setFormData(prev => ({
-        ...prev,
-        monthlyRent: response.data.price
-      }))
+      const response = await fetch(`/api/properties/${propertyId}`)
+      if (response.ok) {
+        const propertyData = await response.json()
+        setProperty(propertyData)
+        setFormData(prev => ({
+          ...prev,
+          monthlyRent: propertyData.price
+        }))
+      } else {
+        toast.error('Error al cargar la propiedad')
+        window.location.href = '/properties'
+      }
     } catch (error) {
       toast.error('Error al cargar la propiedad')
-      navigate('/properties')
+      window.location.href = '/properties'
     }
   }
 
@@ -48,18 +61,31 @@ const CreateRental = () => {
     setLoading(true)
 
     const rentalData = {
-      propertyId: parseInt(propertyId),
+      propertyId: parseInt(property.id),
       tenantId: user.id,
       ...formData,
       monthlyRent: parseFloat(formData.monthlyRent)
     }
 
     try {
-      await api.post('/api/rentals', rentalData)
-      toast.success('¡Alquiler creado exitosamente!')
-      navigate('/rentals')
+      const response = await fetch('/api/rentals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(rentalData)
+      })
+
+      if (response.ok) {
+        toast.success('¡Solicitud de alquiler enviada exitosamente!')
+        window.location.href = '/rentals'
+      } else {
+        const errorData = await response.text()
+        toast.error(errorData || 'Error al enviar la solicitud')
+      }
     } catch (error) {
-      toast.error(error.response?.data || 'Error al crear el alquiler')
+      toast.error('Error al enviar la solicitud')
     } finally {
       setLoading(false)
     }
@@ -88,7 +114,28 @@ const CreateRental = () => {
     return startDate.toISOString().split('T')[0]
   }
 
-  if (!property) {
+  const nextImage = () => {
+    if (property.images && property.images.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % property.images.length)
+    }
+  }
+
+  const prevImage = () => {
+    if (property.images && property.images.length > 1) {
+      setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length)
+    }
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return null
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  if (!property || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
@@ -96,15 +143,15 @@ const CreateRental = () => {
     )
   }
 
-  if (!property.available) {
+  if (user.username === property.ownerUsername) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            Esta propiedad no está disponible
+            No puedes solicitar el alquiler de tu propia propiedad
           </h2>
           <button 
-            onClick={() => navigate('/properties')}
+            onClick={() => window.location.href = '/properties'}
             className="btn-primary"
           >
             Buscar Otras Propiedades
@@ -122,7 +169,7 @@ const CreateRental = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          onClick={() => navigate(-1)}
+          onClick={() => window.history.back()}
           className="flex items-center text-gray-600 hover:text-primary-600 transition-colors duration-300 mb-8"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
@@ -140,10 +187,10 @@ const CreateRental = () => {
             <Key className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            Crear Alquiler
+            Solicitar Alquiler
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Completa los detalles para alquilar esta propiedad
+            Envía una solicitud al propietario para alquilar esta propiedad
           </p>
         </motion.div>
 
@@ -162,10 +209,77 @@ const CreateRental = () => {
 
             <div className="space-y-4">
               <div className="relative overflow-hidden rounded-xl mb-4">
-                <div className="h-48 bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center">
-                  <span className="text-white text-6xl font-bold">
-                    {property.title.charAt(0)}
-                  </span>
+                {property.images && property.images.length > 0 ? (
+                  <div className="relative h-48 group">
+                    <img 
+                      src={property.images[currentImageIndex]}
+                      alt={property.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                    <div className="h-48 bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center" style={{display: 'none'}}>
+                      <span className="text-white text-6xl font-bold">
+                        {property.title.charAt(0)}
+                      </span>
+                    </div>
+                    
+                    {property.images.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevImage}
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                          {property.images.map((_, index) => (
+                            <div
+                              key={index}
+                              className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                                index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-48 bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center">
+                    <span className="text-white text-6xl font-bold">
+                      {property.title.charAt(0)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Status indicator */}
+                <div className="absolute top-3 right-3">
+                  {property.available ? (
+                    <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                      Disponible
+                    </div>
+                  ) : (
+                    <div className="flex flex-col space-y-1">
+                      <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        Ocupado
+                      </div>
+                      {property.occupiedUntil && (
+                        <div className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                          Hasta: {formatDate(property.occupiedUntil)}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -208,9 +322,9 @@ const CreateRental = () => {
               <div className="bg-green-50 p-4 rounded-lg">
                 <div className="flex items-center text-green-600 mb-2">
                   <Euro className="w-5 h-5 mr-2" />
-                  <span className="font-medium">Precio por mes</span>
+                  <span className="font-medium">Precio sugerido</span>
                 </div>
-                <p className="text-2xl font-bold text-green-800">€{property.price}</p>
+                <p className="text-2xl font-bold text-green-800">€{property.price}/mes</p>
               </div>
             </div>
           </motion.div>
@@ -224,13 +338,13 @@ const CreateRental = () => {
           >
             <h3 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
               <Calendar className="w-6 h-6 mr-2" />
-              Detalles del Alquiler
+              Solicitud de Alquiler
             </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-6">
               <div>
                 <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha de Inicio
+                  Fecha de Inicio Deseada
                 </label>
                 <input
                   type="date"
@@ -246,7 +360,7 @@ const CreateRental = () => {
 
               <div>
                 <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha de Fin
+                  Fecha de Fin Deseada
                 </label>
                 <input
                   type="date"
@@ -262,7 +376,7 @@ const CreateRental = () => {
 
               <div>
                 <label htmlFor="monthlyRent" className="block text-sm font-medium text-gray-700 mb-2">
-                  Renta Mensual (€)
+                  Propuesta de Renta Mensual (€)
                 </label>
                 <div className="relative">
                   <Euro className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -283,13 +397,32 @@ const CreateRental = () => {
                 </p>
               </div>
 
-              {/* Rental Summary */}
+              <div>
+                <label htmlFor="requestMessage" className="block text-sm font-medium text-gray-700 mb-2">
+                  Mensaje para el Propietario
+                </label>
+                <div className="relative">
+                  <MessageSquare className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                  <textarea
+                    id="requestMessage"
+                    name="requestMessage"
+                    value={formData.requestMessage}
+                    onChange={handleChange}
+                    rows={4}
+                    className="input-field pl-12 resize-none"
+                    placeholder="Preséntate y explica por qué eres el inquilino ideal para esta propiedad..."
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Request Summary */}
               {formData.startDate && formData.endDate && formData.monthlyRent && (
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-blue-800 mb-3">Resumen del Alquiler</h4>
+                  <h4 className="font-semibold text-blue-800 mb-3">Resumen de la Solicitud</h4>
                   <div className="space-y-2 text-sm text-blue-700">
                     <div className="flex justify-between">
-                      <span>Inquilino:</span>
+                      <span>Solicitante:</span>
                       <span className="font-medium">{user.username}</span>
                     </div>
                     <div className="flex justify-between">
@@ -299,8 +432,14 @@ const CreateRental = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Renta mensual:</span>
-                      <span className="font-medium">€{formData.monthlyRent}</span>
+                      <span>Renta propuesta:</span>
+                      <span className="font-medium">€{formData.monthlyRent}/mes</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Estado:</span>
+                      <span className="font-medium">
+                        {property.available ? 'Solicitud inmediata' : 'Solicitud futura'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -318,14 +457,15 @@ const CreateRental = () => {
               <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={() => navigate(-1)}
+                  onClick={() => window.history.back()}
                   className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-300"
                 >
                   Cancelar
                 </button>
                 <motion.button
                   type="submit"
-                  disabled={loading || !validateDates()}
+                  disabled={loading || !validateDates() || !formData.requestMessage.trim()}
+                  onClick={handleSubmit}
                   whileHover={{ scale: loading ? 1 : 1.02 }}
                   whileTap={{ scale: loading ? 1 : 0.98 }}
                   className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -335,10 +475,10 @@ const CreateRental = () => {
                   ) : (
                     <Key className="w-5 h-5 mr-2" />
                   )}
-                  {loading ? 'Creando...' : 'Crear Alquiler'}
+                  {loading ? 'Enviando...' : 'Enviar Solicitud'}
                 </motion.button>
               </div>
-            </form>
+            </div>
           </motion.div>
         </div>
 
@@ -350,13 +490,14 @@ const CreateRental = () => {
           className="mt-8 p-6 bg-yellow-50 border border-yellow-200 rounded-xl"
         >
           <h4 className="text-lg font-semibold text-yellow-800 mb-3">
-            📋 Información Importante
+            📋 Información sobre el Proceso
           </h4>
           <ul className="text-yellow-700 space-y-2 text-sm">
-            <li>• Al crear el alquiler, la propiedad se marcará como no disponible</li>
-            <li>• El propietario será notificado de tu solicitud de alquiler</li>
-            <li>• Revisa cuidadosamente las fechas antes de confirmar</li>
-            <li>• Puedes modificar la renta mensual si has acordado un precio diferente</li>
+            <li>• Tu solicitud será enviada al propietario para su revisión</li>
+            <li>• El propietario podrá aceptar, rechazar o negociar tu propuesta</li>
+            <li>• Recibirás una notificación con la respuesta del propietario</li>
+            <li>• Puedes hacer múltiples solicitudes para diferentes propiedades</li>
+            <li>• {!property.available ? 'Esta propiedad está ocupada, tu solicitud será para cuando se libere' : 'Esta propiedad está disponible inmediatamente'}</li>
           </ul>
         </motion.div>
       </div>

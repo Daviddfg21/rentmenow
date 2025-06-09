@@ -44,8 +44,17 @@ public class SecurityConfig {
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.cors().and().csrf().disable().exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)
 				.and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
-				.authorizeHttpRequests(authz -> authz.requestMatchers("/api/auth/**").permitAll()
-						.requestMatchers("/h2-console/**").permitAll().requestMatchers("/api/admin/**").hasRole("ADMIN")
+				.authorizeHttpRequests(authz -> authz
+						// Endpoints públicos
+						.requestMatchers("/api/auth/**").permitAll().requestMatchers("/h2-console/**").permitAll()
+						.requestMatchers("/api/properties/**").permitAll() // ✅ PERMITIR PROPIEDADES SIN AUTH
+						.requestMatchers("/api/users/{username}").permitAll() // ✅ PERFILES PÚBLICOS
+
+						// Endpoints que requieren autenticación
+						.requestMatchers("/api/admin/**").hasRole("ADMIN").requestMatchers("/api/rentals/**")
+						.authenticated().requestMatchers("/api/users/profile").authenticated()
+
+						// Todo lo demás requiere autenticación
 						.anyRequest().authenticated());
 
 		http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
@@ -61,8 +70,9 @@ public class SecurityConfig {
 		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(Arrays.asList("*"));
 		configuration.setAllowCredentials(true);
+
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
+		source.registerCorsConfiguration("/**", configuration); // ✅ CORREGIDO: configuration en lugar de source
 		return source;
 	}
 }

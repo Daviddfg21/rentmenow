@@ -27,7 +27,19 @@ public class User {
 	private String email;
 
 	@Column(nullable = false)
-	private String role; // ADMIN, OWNER, TENANT
+	private String role = "USER"; // USER, ADMIN
+
+	@Column(name = "first_name")
+	private String firstName;
+
+	@Column(name = "last_name")
+	private String lastName;
+
+	@Column(name = "phone")
+	private String phone;
+
+	@Column(columnDefinition = "TEXT")
+	private String bio;
 
 	@Column(name = "created_at")
 	private LocalDateTime createdAt = LocalDateTime.now();

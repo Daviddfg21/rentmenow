@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -19,4 +20,9 @@ public class RentalDto {
 	private LocalDate endDate;
 	private BigDecimal monthlyRent;
 	private String status;
+	private LocalDateTime createdAt;
+	private LocalDateTime approvedAt;
+	private LocalDateTime rejectedAt;
+	private String requestMessage;
+	private String responseMessage;
 }

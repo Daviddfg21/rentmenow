@@ -3,6 +3,7 @@ package com.rentmenow.controller;
 import com.rentmenow.dto.RentalDto;
 import com.rentmenow.service.RentalService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -22,6 +23,18 @@ public class RentalController {
 		return ResponseEntity.ok(rentalService.getAllRentals());
 	}
 
+	@GetMapping("/my-requests")
+	public ResponseEntity<List<RentalDto>> getMyRentalRequests(Authentication authentication) {
+		List<RentalDto> rentals = rentalService.getRentalsByTenant(authentication.getName());
+		return ResponseEntity.ok(rentals);
+	}
+
+	@GetMapping("/property-requests")
+	public ResponseEntity<List<RentalDto>> getPropertyRequests(Authentication authentication) {
+		List<RentalDto> rentals = rentalService.getRentalRequestsForOwner(authentication.getName());
+		return ResponseEntity.ok(rentals);
+	}
+
 	@GetMapping("/{id}")
 	public ResponseEntity<?> getRentalById(@PathVariable Long id) {
 		try {
@@ -33,9 +46,29 @@ public class RentalController {
 	}
 
 	@PostMapping
-	public ResponseEntity<?> createRental(@RequestBody RentalDto rentalDto) {
+	public ResponseEntity<?> createRentalRequest(@RequestBody RentalDto rentalDto) {
 		try {
-			RentalDto rental = rentalService.createRental(rentalDto);
+			RentalDto rental = rentalService.createRentalRequest(rentalDto);
+			return ResponseEntity.ok(rental);
+		} catch (RuntimeException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
+
+	@PostMapping("/{id}/approve")
+	public ResponseEntity<?> approveRental(@PathVariable Long id, @RequestParam(required = false) String message) {
+		try {
+			RentalDto rental = rentalService.approveRental(id, message);
+			return ResponseEntity.ok(rental);
+		} catch (RuntimeException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
+
+	@PostMapping("/{id}/reject")
+	public ResponseEntity<?> rejectRental(@PathVariable Long id, @RequestParam(required = false) String message) {
+		try {
+			RentalDto rental = rentalService.rejectRental(id, message);
 			return ResponseEntity.ok(rental);
 		} catch (RuntimeException e) {
 			return ResponseEntity.badRequest().body(e.getMessage());
@@ -62,7 +95,6 @@ public class RentalController {
 		}
 	}
 
-	// OPERACIÓN TRANSACCIONAL: Finalizar alquileres vencidos
 	@PostMapping("/finalize-expired")
 	public ResponseEntity<?> finalizeExpiredRentals() {
 		try {

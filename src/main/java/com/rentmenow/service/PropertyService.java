@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional
@@ -39,6 +40,7 @@ public class PropertyService {
 		property.setPrice(propertyDto.getPrice());
 		property.setBedrooms(propertyDto.getBedrooms());
 		property.setBathrooms(propertyDto.getBathrooms());
+		property.setImages(propertyDto.getImages());
 		property.setOwner(owner);
 
 		if (propertyDto.getCategoryName() != null) {
@@ -77,6 +79,11 @@ public class PropertyService {
 		property.setBedrooms(propertyDto.getBedrooms());
 		property.setBathrooms(propertyDto.getBathrooms());
 		property.setAvailable(propertyDto.getAvailable());
+		property.setImages(propertyDto.getImages());
+
+		if (propertyDto.getOccupiedUntil() != null) {
+			property.setOccupiedUntil(propertyDto.getOccupiedUntil());
+		}
 
 		Property savedProperty = propertyRepository.save(property);
 		return convertToDto(savedProperty);
@@ -89,8 +96,6 @@ public class PropertyService {
 		propertyRepository.deleteById(id);
 	}
 
-	// OPERACIÓN TRANSACCIONAL: Aplicar descuento a todas las propiedades de una
-	// ciudad
 	@Transactional
 	public void applyDiscountToCity(String city, Double discountPercentage) {
 		List<Property> properties = propertyRepository.findByCity(city);
@@ -99,6 +104,22 @@ public class PropertyService {
 			property.setPrice(property.getPrice().multiply(java.math.BigDecimal.valueOf(discountFactor)));
 		});
 		propertyRepository.saveAll(properties);
+	}
+
+	public void markPropertyAsOccupied(Long propertyId, LocalDateTime occupiedUntil) {
+		Property property = propertyRepository.findById(propertyId)
+				.orElseThrow(() -> new RuntimeException("Property not found"));
+		property.setAvailable(false);
+		property.setOccupiedUntil(occupiedUntil);
+		propertyRepository.save(property);
+	}
+
+	public void markPropertyAsAvailable(Long propertyId) {
+		Property property = propertyRepository.findById(propertyId)
+				.orElseThrow(() -> new RuntimeException("Property not found"));
+		property.setAvailable(true);
+		property.setOccupiedUntil(null);
+		propertyRepository.save(property);
 	}
 
 	private PropertyDto convertToDto(Property property) {
@@ -113,6 +134,8 @@ public class PropertyService {
 		dto.setBathrooms(property.getBathrooms());
 		dto.setAvailable(property.getAvailable());
 		dto.setOwnerUsername(property.getOwner().getUsername());
+		dto.setImages(property.getImages());
+		dto.setOccupiedUntil(property.getOccupiedUntil());
 		if (property.getCategory() != null) {
 			dto.setCategoryName(property.getCategory().getName());
 		}

@@ -37,10 +37,22 @@ public class Rental {
 	private BigDecimal monthlyRent;
 
 	@Column(nullable = false)
-	private String status = "ACTIVE"; // ACTIVE, TERMINATED, PENDING
+	private String status = "PENDING"; // PENDING, APPROVED, ACTIVE, TERMINATED, REJECTED
 
 	@Column(name = "created_at")
 	private LocalDateTime createdAt = LocalDateTime.now();
+
+	@Column(name = "approved_at")
+	private LocalDateTime approvedAt;
+
+	@Column(name = "rejected_at")
+	private LocalDateTime rejectedAt;
+
+	@Column(columnDefinition = "TEXT")
+	private String requestMessage;
+
+	@Column(columnDefinition = "TEXT")
+	private String responseMessage;
 
 	@OneToMany(mappedBy = "rental", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<Payment> payments;

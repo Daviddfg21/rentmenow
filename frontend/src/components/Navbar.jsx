@@ -1,18 +1,69 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Home, Building, Key, Plus, Settings, LogOut, Menu, X, User } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import React, { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Home, Building, Key, Plus, Settings, LogOut, Menu, X, User, ChevronDown } from 'lucide-react'
 
 const Navbar = () => {
-  const { user, logout, isAuthenticated, isAdmin } = useAuth()
-  const navigate = useNavigate()
+  const [user, setUser] = useState(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef(null)
+
+  useEffect(() => {
+    // Check authentication status
+    const token = localStorage.getItem('token')
+    const userData = localStorage.getItem('user')
+    
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        setIsAuthenticated(true)
+        setIsAdmin(parsedUser.role === 'ADMIN')
+      } catch (error) {
+        // Si hay error, limpiar datos corruptos
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Función de navegación programática
+  // En la función navigateTo del Navbar
+  const navigateTo = (path) => {
+    window.history.pushState({}, '', path) // Cambiar URL sin recargar
+    window.dispatchEvent(new PopStateEvent('popstate')) // Trigger el evento
+    setIsOpen(false)
+    setUserMenuOpen(false)
+  }
 
   const handleLogout = () => {
-    logout()
-    navigate('/')
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setUser(null)
+    setIsAuthenticated(false)
+    setIsAdmin(false)
+    setUserMenuOpen(false)
     setIsOpen(false)
+    window.location.href = '/'
+  }
+
+  const handleUserMenuClick = () => {
+    setUserMenuOpen(!userMenuOpen)
   }
 
   const navItems = [
@@ -34,27 +85,27 @@ const Navbar = () => {
             className="flex items-center"
             whileHover={{ scale: 1.05 }}
           >
-            <Link to="/" className="flex items-center space-x-2">
+            <button onClick={() => navigateTo('/')} className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
                 <Building className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
                 RentMeNow
               </span>
-            </Link>
+            </button>
           </motion.div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
               <motion.div key={item.path} whileHover={{ y: -2 }}>
-                <Link
-                  to={item.path}
+                <button
+                  onClick={() => navigateTo(item.path)}
                   className="flex items-center space-x-1 text-gray-700 hover:text-primary-600 transition-colors duration-300"
                 >
                   <item.icon className="w-4 h-4" />
                   <span>{item.name}</span>
-                </Link>
+                </button>
               </motion.div>
             ))}
           </div>
@@ -62,32 +113,105 @@ const Navbar = () => {
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 text-gray-700">
-                  <User className="w-4 h-4" />
-                  <span className="text-sm font-medium">{user.username}</span>
-                  <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
-                    {user.role}
-                  </span>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleLogout}
-                  className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors duration-300"
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={handleUserMenuClick}
+                  className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 transition-colors duration-300 p-2 rounded-lg hover:bg-gray-50"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>Salir</span>
-                </motion.button>
+                  <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary-600" />
+                  </div>
+                  <span className="text-sm font-medium">{user?.username}</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2"
+                    >
+                      {/* User Info */}
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-primary-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{user?.username}</p>
+                            <p className="text-xs text-gray-500">{user?.email}</p>
+                            <span className="inline-block mt-1 px-2 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
+                              {user?.role === 'ADMIN' ? 'Administrador' : 'Usuario'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <button
+                          onClick={() => navigateTo('/profile')}
+                          className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-300 w-full text-left"
+                        >
+                          <User className="w-4 h-4" />
+                          <span>Mi Perfil</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/rentals')}
+                          className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-300 w-full text-left"
+                        >
+                          <Key className="w-4 h-4" />
+                          <span>Mis Alquileres</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/create-property')}
+                          className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-300 w-full text-left"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Crear Propiedad</span>
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => navigateTo('/admin')}
+                            className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-300 w-full text-left"
+                          >
+                            <Settings className="w-4 h-4" />
+                            <span>Panel Admin</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Logout */}
+                      <div className="border-t border-gray-100 pt-2">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center space-x-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-300 w-full text-left"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Cerrar Sesión</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <div className="flex items-center space-x-4">
-                <Link to="/login" className="text-gray-700 hover:text-primary-600 transition-colors duration-300">
+                <button 
+                  onClick={() => navigateTo('/login')} 
+                  className="text-gray-700 hover:text-primary-600 transition-colors duration-300"
+                >
                   Iniciar Sesión
-                </Link>
-                <Link to="/register" className="btn-primary">
+                </button>
+                <button 
+                  onClick={() => navigateTo('/register')} 
+                  className="btn-primary"
+                >
                   Registrarse
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -105,60 +229,66 @@ const Navbar = () => {
       </div>
 
       {/* Mobile menu */}
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="md:hidden bg-white/95 backdrop-blur-md border-t border-gray-200"
-        >
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsOpen(false)}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300"
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.name}</span>
-              </Link>
-            ))}
-            
-            {isAuthenticated ? (
-              <div className="border-t pt-2 mt-2">
-                <div className="px-3 py-2 text-sm text-gray-600">
-                  {user.username} - {user.role}
-                </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-white/95 backdrop-blur-md border-t border-gray-200"
+          >
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {navItems.map((item) => (
                 <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300 w-full"
+                  key={item.path}
+                  onClick={() => navigateTo(item.path)}
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300 w-full text-left"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>Salir</span>
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.name}</span>
                 </button>
-              </div>
-            ) : (
-              <div className="border-t pt-2 mt-2 space-y-1">
-                <Link
-                  to="/login"
-                  onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 text-gray-700 hover:bg-primary-50 rounded-lg transition-all duration-300"
-                >
-                  Iniciar Sesión
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all duration-300"
-                >
-                  Registrarse
-                </Link>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
+              ))}
+              
+              {isAuthenticated ? (
+                <div className="border-t pt-2 mt-2">
+                  <div className="px-3 py-2 text-sm text-gray-600">
+                    {user?.username} - {user?.role === 'ADMIN' ? 'Administrador' : 'Usuario'}
+                  </div>
+                  <button
+                    onClick={() => navigateTo('/profile')}
+                    className="flex items-center space-x-2 px-3 py-2 text-gray-700 hover:bg-primary-50 rounded-lg transition-all duration-300 w-full text-left"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Mi Perfil</span>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300 w-full text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Cerrar Sesión</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="border-t pt-2 mt-2 space-y-1">
+                  <button
+                    onClick={() => navigateTo('/login')}
+                    className="block px-3 py-2 text-gray-700 hover:bg-primary-50 rounded-lg transition-all duration-300 w-full text-left"
+                  >
+                    Iniciar Sesión
+                  </button>
+                  <button
+                    onClick={() => navigateTo('/register')}
+                    className="block px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all duration-300 w-full text-left"
+                  >
+                    Registrarse
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   )
 }

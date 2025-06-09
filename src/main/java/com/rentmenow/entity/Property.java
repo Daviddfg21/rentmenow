@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Table(name = "properties")
@@ -54,8 +55,16 @@ public class Property {
 	private User owner;
 
 	@OneToMany(mappedBy = "property", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-	private List<Rental> rentals;
+	private List<Rental> rentals = new ArrayList<>();
 
 	@OneToMany(mappedBy = "property", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-	private List<Maintenance> maintenances;
+	private List<Maintenance> maintenances = new ArrayList<>();
+
+	@ElementCollection
+	@CollectionTable(name = "property_images", joinColumns = @JoinColumn(name = "property_id"))
+	@Column(name = "image_url")
+	private List<String> images = new ArrayList<>();
+
+	@Column(name = "occupied_until")
+	private LocalDateTime occupiedUntil;
 }

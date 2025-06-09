@@ -1,32 +1,62 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   ArrowLeft, MapPin, Bed, Bath, Euro, User, Calendar, 
-  Key, Edit, Trash2, AlertCircle, CheckCircle 
+  Key, Edit, Trash2, AlertCircle, CheckCircle, ChevronLeft, ChevronRight 
 } from 'lucide-react'
-import api from '../services/api'
-import toast from 'react-hot-toast'
-import { useAuth } from '../context/AuthContext'
 
 const PropertyDetail = () => {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
   const [property, setProperty] = useState(null)
+  const [user, setUser] = useState(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
-    fetchProperty()
-  }, [id])
+    // Check authentication
+    const token = localStorage.getItem('token')
+    const userData = localStorage.getItem('user')
+    
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        setIsAuthenticated(true)
+      } catch (error) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+    }
 
-  const fetchProperty = async () => {
+    // Get property ID from URL
+    const pathParts = window.location.pathname.split('/')
+    const propertyId = pathParts[pathParts.length - 1]
+    
+    if (propertyId && !isNaN(propertyId)) {
+      fetchProperty(propertyId)
+    } else {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchProperty = async (id) => {
     try {
-      const response = await api.get(`/api/properties/${id}`)
-      setProperty(response.data)
+      const response = await fetch(`/api/properties/${id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setProperty(data)
+      } else {
+        setMessage('Error al cargar la propiedad')
+        setTimeout(() => {
+          window.location.href = '/properties'
+        }, 2000)
+      }
     } catch (error) {
-      toast.error('Error al cargar la propiedad')
-      navigate('/properties')
+      setMessage('Error al cargar la propiedad')
+      setTimeout(() => {
+        window.location.href = '/properties'
+      }, 2000)
     } finally {
       setLoading(false)
     }
@@ -38,12 +68,57 @@ const PropertyDetail = () => {
     }
 
     try {
-      await api.delete(`/api/properties/${id}`)
-      toast.success('Propiedad eliminada exitosamente')
-      navigate('/properties')
+      const response = await fetch(`/api/properties/${property.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (response.ok) {
+        setMessage('Propiedad eliminada exitosamente')
+        setTimeout(() => {
+          window.location.href = '/properties'
+        }, 1000)
+      } else {
+        setMessage('Error al eliminar la propiedad')
+      }
     } catch (error) {
-      toast.error('Error al eliminar la propiedad')
+      setMessage('Error al eliminar la propiedad')
     }
+  }
+
+  const handleBack = () => {
+    window.history.back()
+  }
+
+  const handleRentRequest = () => {
+    if (!isAuthenticated) {
+      window.location.href = '/login'
+      return
+    }
+    window.location.href = `/create-rental/${property.id}`
+  }
+
+  const nextImage = () => {
+    if (property.images && property.images.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % property.images.length)
+    }
+  }
+
+  const prevImage = () => {
+    if (property.images && property.images.length > 1) {
+      setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length)
+    }
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return null
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
   }
 
   const canEdit = user && (user.username === property?.ownerUsername || user.role === 'ADMIN')
@@ -61,10 +136,15 @@ const PropertyDetail = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
+          {message && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">{message}</p>
+            </div>
+          )}
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Propiedad no encontrada</h2>
-          <Link to="/properties" className="btn-primary">
+          <button onClick={() => window.location.href = '/properties'} className="btn-primary">
             Volver a Propiedades
-          </Link>
+          </button>
         </div>
       </div>
     )
@@ -72,13 +152,24 @@ const PropertyDetail = () => {
 
   return (
     <div className="min-h-screen pt-20 px-4">
+      {/* Toast Message */}
+      {message && (
+        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50">
+          <div className={`shadow-lg rounded-xl p-4 border-l-4 max-w-md ${
+            message.includes('Error') ? 'bg-red-50 border-red-500' : 'bg-green-50 border-green-500'
+          }`}>
+            <p className={message.includes('Error') ? 'text-red-800' : 'text-green-800'}>{message}</p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           className="flex items-center text-gray-600 hover:text-primary-600 transition-colors duration-300 mb-8"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
@@ -95,23 +186,81 @@ const PropertyDetail = () => {
               transition={{ duration: 0.8 }}
               className="relative overflow-hidden rounded-2xl mb-8"
             >
-              <div className="h-96 bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center">
-                <span className="text-white text-8xl font-bold">
-                  {property.title.charAt(0)}
-                </span>
-              </div>
-              <div className="absolute top-6 right-6">
-                {property.available ? (
-                  <div className="bg-green-500 text-white px-4 py-2 rounded-full font-semibold flex items-center">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    Disponible
-                  </div>
+              <div className="relative h-96 group">
+                {property.images && property.images.length > 0 ? (
+                  <>
+                    <img 
+                      src={property.images[currentImageIndex]}
+                      alt={property.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                    <div className="h-96 bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center" style={{display: 'none'}}>
+                      <span className="text-white text-8xl font-bold">
+                        {property.title.charAt(0)}
+                      </span>
+                    </div>
+                    
+                    {property.images.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevImage}
+                          className="absolute left-6 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        >
+                          <ChevronLeft className="w-6 h-6" />
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        >
+                          <ChevronRight className="w-6 h-6" />
+                        </button>
+                        
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                          {property.images.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentImageIndex(index)}
+                              className={`w-3 h-3 rounded-full transition-colors duration-300 ${
+                                index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
                 ) : (
-                  <div className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold flex items-center">
-                    <AlertCircle className="w-5 h-5 mr-2" />
-                    Ocupado
+                  <div className="h-96 bg-gradient-to-br from-primary-400 to-secondary-400 flex items-center justify-center">
+                    <span className="text-white text-8xl font-bold">
+                      {property.title.charAt(0)}
+                    </span>
                   </div>
                 )}
+
+                <div className="absolute top-6 right-6">
+                  {property.available ? (
+                    <div className="bg-green-500 text-white px-4 py-2 rounded-full font-semibold flex items-center">
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Disponible
+                    </div>
+                  ) : (
+                    <div className="flex flex-col space-y-2">
+                      <div className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold flex items-center">
+                        <AlertCircle className="w-5 h-5 mr-2" />
+                        Ocupado
+                      </div>
+                      {property.occupiedUntil && (
+                        <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                          Hasta: {formatDate(property.occupiedUntil)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
 
@@ -194,7 +343,12 @@ const PropertyDetail = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Propietario</p>
-                    <p className="font-semibold text-gray-800">{property.ownerUsername}</p>
+                    <button 
+                      onClick={() => window.location.href = `/profile/${property.ownerUsername}`}
+                      className="font-semibold text-gray-800 hover:text-primary-600 transition-colors duration-300"
+                    >
+                      {property.ownerUsername}
+                    </button>
                   </div>
                 </div>
                 
@@ -222,35 +376,32 @@ const PropertyDetail = () => {
                 <p className="text-gray-600">por mes</p>
               </div>
 
-              {canRent ? (
+              {canRent || !property.available ? (
                 <div className="space-y-4">
-                  <Link
-                    to={`/create-rental/${property.id}`}
+                  <button
+                    onClick={handleRentRequest}
                     className="w-full btn-primary flex items-center justify-center"
                   >
                     <Key className="w-5 h-5 mr-2" />
-                    Alquilar Ahora
-                  </Link>
+                    {property.available ? 'Solicitar Alquiler' : 'Solicitar para Futuro'}
+                  </button>
                   <p className="text-sm text-gray-600 text-center">
-                    Contacta al propietario para más información
+                    {property.available 
+                      ? 'Envía una solicitud al propietario'
+                      : `Disponible desde: ${formatDate(property.occupiedUntil)}`
+                    }
                   </p>
                 </div>
               ) : !isAuthenticated ? (
                 <div className="space-y-4">
-                  <Link to="/login" className="w-full btn-primary flex items-center justify-center">
-                    Iniciar Sesión para Alquilar
-                  </Link>
+                  <button 
+                    onClick={() => window.location.href = '/login'} 
+                    className="w-full btn-primary flex items-center justify-center"
+                  >
+                    Iniciar Sesión para Solicitar
+                  </button>
                   <p className="text-sm text-gray-600 text-center">
-                    Necesitas una cuenta para alquilar propiedades
-                  </p>
-                </div>
-              ) : !property.available ? (
-                <div className="text-center">
-                  <div className="w-full bg-red-100 text-red-700 py-3 rounded-xl font-semibold">
-                    Propiedad No Disponible
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">
-                    Esta propiedad está actualmente ocupada
+                    Necesitas una cuenta para solicitar alquileres
                   </p>
                 </div>
               ) : (
@@ -259,7 +410,7 @@ const PropertyDetail = () => {
                     Esta es tu propiedad
                   </div>
                   <p className="text-sm text-gray-600 mt-2">
-                    No puedes alquilar tu propia propiedad
+                    No puedes solicitar el alquiler de tu propia propiedad
                   </p>
                 </div>
               )}

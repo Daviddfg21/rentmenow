@@ -1,9 +1,7 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
-import { UserPlus, User, Lock, Mail, Eye, EyeOff, Shield } from 'lucide-react'
+import { UserPlus, User, Lock, Mail, Eye, EyeOff, Phone, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAuth } from '../context/AuthContext'
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,13 +9,13 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'TENANT'
+    firstName: '',
+    lastName: '',
+    phone: ''
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { register } = useAuth()
-  const navigate = useNavigate()
 
   const handleChange = (e) => {
     setFormData({
@@ -43,13 +41,21 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...registerData } = formData
-      const result = await register(registerData)
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(registerData)
+      })
       
-      if (result.success) {
+      if (response.ok) {
         toast.success('¡Cuenta creada exitosamente! Inicia sesión para continuar')
-        navigate('/login')
+        // Redirect to login
+        window.location.href = '/login'
       } else {
-        toast.error(result.message)
+        const errorData = await response.text()
+        toast.error(errorData || 'Error al crear la cuenta')
       }
     } catch (error) {
       toast.error('Error al crear la cuenta')
@@ -58,19 +64,13 @@ const Register = () => {
     }
   }
 
-  const roles = [
-    { value: 'TENANT', label: 'Inquilino', description: 'Buscar propiedades para alquilar' },
-    { value: 'OWNER', label: 'Propietario', description: 'Publicar y gestionar propiedades' },
-    { value: 'ADMIN', label: 'Administrador', description: 'Gestión completa del sistema' }
-  ]
-
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-20">
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.8 }}
-        className="card p-8 w-full max-w-md"
+        className="card p-8 w-full max-w-lg"
       >
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -80,10 +80,48 @@ const Register = () => {
           <p className="text-gray-600">Únete a la comunidad RentMeNow</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                Nombre
+              </label>
+              <div className="relative">
+                <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="input-field pl-12"
+                  placeholder="Tu nombre"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                Apellidos
+              </label>
+              <div className="relative">
+                <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="input-field pl-12"
+                  placeholder="Tus apellidos"
+                />
+              </div>
+            </div>
+          </div>
+
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-              Usuario
+              Usuario *
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -102,7 +140,7 @@ const Register = () => {
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              Email *
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -120,31 +158,26 @@ const Register = () => {
           </div>
 
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de Usuario
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              Teléfono
             </label>
             <div className="relative">
-              <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
                 onChange={handleChange}
                 className="input-field pl-12"
-                required
-              >
-                {roles.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label} - {role.description}
-                  </option>
-                ))}
-              </select>
+                placeholder="Tu número de teléfono"
+              />
             </div>
           </div>
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Contraseña
+              Contraseña *
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -170,7 +203,7 @@ const Register = () => {
 
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Confirmar Contraseña
+              Confirmar Contraseña *
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -197,6 +230,7 @@ const Register = () => {
           <motion.button
             type="submit"
             disabled={loading}
+            onClick={handleSubmit}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full btn-primary flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -210,15 +244,19 @@ const Register = () => {
               </>
             )}
           </motion.button>
-        </form>
+        </div>
 
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             ¿Ya tienes cuenta?{' '}
-            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors duration-300">
+            <a href="/login" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors duration-300">
               Inicia sesión aquí
-            </Link>
+            </a>
           </p>
+        </div>
+
+        <div className="mt-4 text-center text-sm text-gray-500">
+          <p>* Campos obligatorios</p>
         </div>
       </motion.div>
     </div>

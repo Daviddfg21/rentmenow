@@ -37,7 +37,10 @@ public class AuthController {
 
 		User user = userService.findByUsername(loginRequest.getUsername());
 		String token = jwtUtil.generateToken(user.getUsername());
-		UserDto userDto = new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getRole());
+
+		// Usar el constructor completo de UserDto con 8 parámetros
+		UserDto userDto = new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getRole(),
+				user.getFirstName(), user.getLastName(), user.getPhone(), user.getBio());
 
 		return ResponseEntity.ok(new AuthResponse(token, userDto));
 	}

@@ -15,6 +15,10 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 
 	List<Rental> findByStatus(String status);
 
-	@Query("SELECT SUM(r.monthlyRent) FROM Rental r WHERE r.status = 'ACTIVE'")
+	List<Rental> findByPropertyIdAndStatus(Long propertyId, String status);
+
+	List<Rental> findByPropertyOwnerId(Long ownerId);
+
+	@Query("SELECT SUM(r.monthlyRent) FROM Rental r WHERE r.status = 'APPROVED'")
 	BigDecimal getTotalActiveRentRevenue();
 }

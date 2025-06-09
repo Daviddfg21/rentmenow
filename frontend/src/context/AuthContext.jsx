@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import api from '../services/api'
 
 const AuthContext = createContext()
 
@@ -20,39 +19,44 @@ export const AuthProvider = ({ children }) => {
     const userData = localStorage.getItem('user')
     
     if (token && userData) {
-      setUser(JSON.parse(userData))
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+      } catch (error) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
     }
     setLoading(false)
   }, [])
 
   const login = async (credentials) => {
     try {
-      const response = await api.post('/api/auth/login', credentials)
-      const { token, user: userData } = response.data
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials)
+      })
       
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(userData))
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      
-      setUser(userData)
-      return { success: true }
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data || 'Error en el login' 
+      if (response.ok) {
+        const data = await response.json()
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        setUser(data.user)
+        return { success: true }
+      } else {
+        const errorData = await response.text()
+        return { 
+          success: false, 
+          message: errorData || 'Error en el login' 
+        }
       }
-    }
-  }
-
-  const register = async (userData) => {
-    try {
-      await api.post('/api/auth/register', userData)
-      return { success: true }
     } catch (error) {
       return { 
         success: false, 
-        message: error.response?.data || 'Error en el registro' 
+        message: 'Error en el login' 
       }
     }
   }
@@ -60,14 +64,13 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    delete api.defaults.headers.common['Authorization']
     setUser(null)
+    window.location.href = '/'
   }
 
   const value = {
     user,
     login,
-    register,
     logout,
     loading,
     isAuthenticated: !!user,

@@ -18,6 +18,7 @@ public class PropertyController {
 		this.propertyService = propertyService;
 	}
 
+	// ✅ PÚBLICOS - No requieren autenticación
 	@GetMapping
 	public ResponseEntity<List<PropertyDto>> getAllProperties() {
 		return ResponseEntity.ok(propertyService.getAllProperties());
@@ -38,6 +39,7 @@ public class PropertyController {
 		}
 	}
 
+	// ✅ REQUIEREN AUTENTICACIÓN
 	@PostMapping
 	public ResponseEntity<?> createProperty(@RequestBody PropertyDto propertyDto, Authentication authentication) {
 		try {
