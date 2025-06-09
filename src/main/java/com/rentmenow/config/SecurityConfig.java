@@ -45,15 +45,16 @@ public class SecurityConfig {
 		http.cors().and().csrf().disable().exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)
 				.and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
 				.authorizeHttpRequests(authz -> authz
-						// Recursos estáticos del frontend
-						.requestMatchers("/", "/static/**", "/assets/**", "/*.js", "/*.css", "/*.ico", "/*.png",
-								"/*.svg", "/index.html")
+						// Recursos estáticos del frontend - MÁS ESPECÍFICOS PRIMERO
+						.requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
+						.requestMatchers("/static/**", "/assets/**", "/js/**", "/css/**", "/**/*.js", "/**/*.css",
+								"/**/*.png", "/**/*.svg", "/**/*.ico")
 						.permitAll()
 
 						// Endpoints públicos de la API
 						.requestMatchers("/api/auth/**").permitAll().requestMatchers("/h2-console/**").permitAll()
-						.requestMatchers("/api/properties/**").permitAll().requestMatchers("/api/users/{username}")
-						.permitAll()
+						.requestMatchers("/api/properties", "/api/properties/**").permitAll() // Más específico
+						.requestMatchers("/api/users/{username}").permitAll()
 
 						// Endpoints que requieren autenticación
 						.requestMatchers("/api/admin/**").hasRole("ADMIN").requestMatchers("/api/rentals/**")
@@ -62,7 +63,7 @@ public class SecurityConfig {
 						// Todo lo demás de API requiere autenticación
 						.requestMatchers("/api/**").authenticated()
 
-						// Permitir todas las rutas del frontend (SPA)
+						// IMPORTANTE: Permitir todas las rutas del frontend (SPA) - DEBE IR AL FINAL
 						.anyRequest().permitAll());
 
 		http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
