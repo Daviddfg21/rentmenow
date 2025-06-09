@@ -45,17 +45,25 @@ public class SecurityConfig {
 		http.cors().and().csrf().disable().exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)
 				.and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
 				.authorizeHttpRequests(authz -> authz
-						// Endpoints públicos
+						// Recursos estáticos del frontend
+						.requestMatchers("/", "/static/**", "/assets/**", "/*.js", "/*.css", "/*.ico", "/*.png",
+								"/*.svg", "/index.html")
+						.permitAll()
+
+						// Endpoints públicos de la API
 						.requestMatchers("/api/auth/**").permitAll().requestMatchers("/h2-console/**").permitAll()
-						.requestMatchers("/api/properties/**").permitAll() // ✅ PERMITIR PROPIEDADES SIN AUTH
-						.requestMatchers("/api/users/{username}").permitAll() // ✅ PERFILES PÚBLICOS
+						.requestMatchers("/api/properties/**").permitAll().requestMatchers("/api/users/{username}")
+						.permitAll()
 
 						// Endpoints que requieren autenticación
 						.requestMatchers("/api/admin/**").hasRole("ADMIN").requestMatchers("/api/rentals/**")
 						.authenticated().requestMatchers("/api/users/profile").authenticated()
 
-						// Todo lo demás requiere autenticación
-						.anyRequest().authenticated());
+						// Todo lo demás de API requiere autenticación
+						.requestMatchers("/api/**").authenticated()
+
+						// Permitir todas las rutas del frontend (SPA)
+						.anyRequest().permitAll());
 
 		http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 		http.headers().frameOptions().disable(); // Para H2 console
@@ -72,7 +80,7 @@ public class SecurityConfig {
 		configuration.setAllowCredentials(true);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration); // ✅ CORREGIDO: configuration en lugar de source
+		source.registerCorsConfiguration("/**", configuration);
 		return source;
 	}
 }
