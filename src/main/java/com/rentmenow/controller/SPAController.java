@@ -12,10 +12,55 @@ public class SPAController {
 		return "forward:/index.html";
 	}
 
-	// Manejar todas las rutas del frontend (excepto API y recursos estáticos)
-	@GetMapping(value = { "/login", "/register", "/properties", "/properties/**", "/create-property", "/rentals",
-			"/create-rental/**", "/admin", "/profile", "/profile/**" })
-	public String forward() {
+	// Manejar rutas específicas del frontend SIN wildcards problemáticos
+	@GetMapping("/login")
+	public String login() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/register")
+	public String register() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/properties")
+	public String properties() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/create-property")
+	public String createProperty() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/rentals")
+	public String rentals() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/admin")
+	public String admin() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/profile")
+	public String profile() {
+		return "forward:/index.html";
+	}
+
+	// Manejar rutas con parámetros específicos - UNA POR UNA
+	@GetMapping("/properties/{id}")
+	public String propertyDetail() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/create-rental/{id}")
+	public String createRental() {
+		return "forward:/index.html";
+	}
+
+	@GetMapping("/profile/{username}")
+	public String userProfile() {
 		return "forward:/index.html";
 	}
 }
