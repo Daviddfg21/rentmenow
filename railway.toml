@@ -1,0 +1,13 @@
+[build]
+builder = "nixpacks"
+
+[build.nixpacksConfig]
+providers = ["java", "nodejs"]
+
+[build.nixpacksBuildCommand]
+cmd = "cd frontend && npm ci && npm run build && cd .. && mkdir -p src/main/resources/static && cp -r frontend/dist/* src/main/resources/static/ && mvn clean package -DskipTests"
+
+[deploy]
+startCommand = "java -jar target/rentmenow-0.0.1-SNAPSHOT.jar"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
