@@ -8,10 +8,21 @@ const UserProfile = ({ username, isOwnProfile = false }) => {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
+  const [stats, setStats] = useState({
+    properties: 0,
+    rentals: 0,
+    requests: 0
+  })
 
   useEffect(() => {
     fetchUser()
   }, [username])
+
+  useEffect(() => {
+    if (isOwnProfile && user) {
+      fetchUserStats()
+    }
+  }, [isOwnProfile, user])
 
   const fetchUser = async () => {
     try {
@@ -37,6 +48,35 @@ const UserProfile = ({ username, isOwnProfile = false }) => {
       toast.error('Error al cargar el perfil del usuario')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUserStats = async () => {
+    try {
+      // Obtener propiedades del usuario
+      const propertiesRes = await fetch('/api/properties')
+      if (propertiesRes.ok) {
+        const allProperties = await propertiesRes.json()
+        const userProperties = allProperties.filter(p => p.ownerUsername === user.username)
+        
+        // Obtener alquileres del usuario  
+        const rentalsRes = await fetch('/api/rentals/my-requests', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+        
+        let userRentals = []
+        if (rentalsRes.ok) {
+          userRentals = await rentalsRes.json()
+        }
+        
+        setStats({
+          properties: userProperties.length,
+          rentals: userRentals.filter(r => r.status === 'APPROVED').length,
+          requests: userRentals.filter(r => r.status === 'PENDING').length
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error)
     }
   }
 
@@ -330,7 +370,7 @@ const UserProfile = ({ username, isOwnProfile = false }) => {
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Building className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="text-2xl font-bold text-gray-800 mb-1">0</div>
+              <div className="text-2xl font-bold text-gray-800 mb-1">{stats.properties}</div>
               <div className="text-sm text-gray-600">Propiedades Publicadas</div>
             </div>
 
@@ -338,7 +378,7 @@ const UserProfile = ({ username, isOwnProfile = false }) => {
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Key className="w-6 h-6 text-green-600" />
               </div>
-              <div className="text-2xl font-bold text-gray-800 mb-1">0</div>
+              <div className="text-2xl font-bold text-gray-800 mb-1">{stats.rentals}</div>
               <div className="text-sm text-gray-600">Alquileres Activos</div>
             </div>
 
@@ -346,7 +386,7 @@ const UserProfile = ({ username, isOwnProfile = false }) => {
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <MapPin className="w-6 h-6 text-purple-600" />
               </div>
-              <div className="text-2xl font-bold text-gray-800 mb-1">0</div>
+              <div className="text-2xl font-bold text-gray-800 mb-1">{stats.requests}</div>
               <div className="text-sm text-gray-600">Solicitudes Pendientes</div>
             </div>
           </motion.div>
