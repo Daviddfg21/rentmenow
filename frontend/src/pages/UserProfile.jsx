@@ -53,30 +53,39 @@ const UserProfile = ({ username, isOwnProfile = false }) => {
 
   const fetchUserStats = async () => {
     try {
+      console.log('🔄 Obteniendo estadísticas para:', user.username)
+      
       // Obtener propiedades del usuario
       const propertiesRes = await fetch('/api/properties')
+      let userProperties = []
       if (propertiesRes.ok) {
         const allProperties = await propertiesRes.json()
-        const userProperties = allProperties.filter(p => p.ownerUsername === user.username)
-        
-        // Obtener alquileres del usuario  
-        const rentalsRes = await fetch('/api/rentals/my-requests', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
-        
-        let userRentals = []
-        if (rentalsRes.ok) {
-          userRentals = await rentalsRes.json()
-        }
-        
-        setStats({
-          properties: userProperties.length,
-          rentals: userRentals.filter(r => r.status === 'APPROVED').length,
-          requests: userRentals.filter(r => r.status === 'PENDING').length
-        })
+        userProperties = allProperties.filter(p => p.ownerUsername === user.username)
+        console.log('🏠 Propiedades encontradas:', userProperties.length)
       }
+      
+      // Obtener alquileres del usuario  
+      const rentalsRes = await fetch('/api/rentals/my-requests', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
+      
+      let userRentals = []
+      if (rentalsRes.ok) {
+        userRentals = await rentalsRes.json()
+        console.log('🔑 Alquileres encontrados:', userRentals.length)
+      }
+      
+      const newStats = {
+        properties: userProperties.length,
+        rentals: userRentals.filter(r => r.status === 'APPROVED').length,
+        requests: userRentals.filter(r => r.status === 'PENDING').length
+      }
+      
+      console.log('📊 Estadísticas calculadas:', newStats)
+      setStats(newStats)
+      
     } catch (error) {
-      console.error('Error fetching user stats:', error)
+      console.error('❌ Error fetching user stats:', error)
     }
   }
 
