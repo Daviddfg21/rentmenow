@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Building, Key, Plus, Settings, LogOut, Menu, X, User, ChevronDown } from 'lucide-react'
+import { Home, Building, Key, Plus, Settings, LogOut, Menu, X, User, ChevronDown, BarChart3 } from 'lucide-react'
 
 const Navbar = () => {
   const [user, setUser] = useState(null)
@@ -42,11 +42,9 @@ const Navbar = () => {
     }
   }, [])
 
-  // Función de navegación programática
-  // En la función navigateTo del Navbar
   const navigateTo = (path) => {
-    window.history.pushState({}, '', path) // Cambiar URL sin recargar
-    window.dispatchEvent(new PopStateEvent('popstate')) // Trigger el evento
+    window.history.pushState({}, '', path)
+    window.dispatchEvent(new PopStateEvent('popstate'))
     setIsOpen(false)
     setUserMenuOpen(false)
   }
@@ -70,7 +68,8 @@ const Navbar = () => {
     { name: 'Inicio', path: '/', icon: Home },
     { name: 'Propiedades', path: '/properties', icon: Building },
     ...(isAuthenticated ? [
-      { name: 'Mis Alquileres', path: '/rentals', icon: Key },
+      { name: 'Mi Dashboard', path: '/dashboard', icon: BarChart3 },
+      { name: 'Solicitudes', path: '/rentals', icon: Key }, // CAMBIADO DE "Mis Alquileres" A "Solicitudes"
       { name: 'Crear Propiedad', path: '/create-property', icon: Plus },
       ...(isAdmin ? [{ name: 'Admin', path: '/admin', icon: Settings }] : [])
     ] : [])
@@ -153,6 +152,13 @@ const Navbar = () => {
                       {/* Menu Items */}
                       <div className="py-2">
                         <button
+                          onClick={() => navigateTo('/dashboard')}
+                          className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-300 w-full text-left"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          <span>Mi Dashboard</span>
+                        </button>
+                        <button
                           onClick={() => navigateTo('/profile')}
                           className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-300 w-full text-left"
                         >
@@ -164,7 +170,7 @@ const Navbar = () => {
                           className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-300 w-full text-left"
                         >
                           <Key className="w-4 h-4" />
-                          <span>Mis Alquileres</span>
+                          <span>Solicitudes</span>
                         </button>
                         <button
                           onClick={() => navigateTo('/create-property')}

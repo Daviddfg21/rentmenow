@@ -67,9 +67,12 @@ const Properties = () => {
     }
 
     if (filters.bedrooms) {
-      filtered = filtered.filter(property =>
-        property.bedrooms >= parseInt(filters.bedrooms)
-      )
+      const bedroomsNum = parseInt(filters.bedrooms)
+      if (!isNaN(bedroomsNum) && bedroomsNum > 0) {
+        filtered = filtered.filter(property =>
+          property.bedrooms >= bedroomsNum
+        )
+      }
     }
 
     if (filters.available !== 'all') {
@@ -82,9 +85,19 @@ const Properties = () => {
   }
 
   const handleFilterChange = (e) => {
+    const { name, value } = e.target
+    
+    // Validación especial para habitaciones
+    if (name === 'bedrooms') {
+      // Solo permitir números positivos
+      if (value !== '' && (isNaN(value) || parseInt(value) < 0)) {
+        return // No actualizar si es inválido
+      }
+    }
+    
     setFilters({
       ...filters,
-      [e.target.name]: e.target.value
+      [name]: value
     })
   }
 
@@ -300,6 +313,7 @@ const Properties = () => {
                   onChange={handleFilterChange}
                   placeholder="Precio mínimo"
                   className="input-field pl-12"
+                  min="0"
                 />
               </div>
             </div>
@@ -314,6 +328,7 @@ const Properties = () => {
                   onChange={handleFilterChange}
                   placeholder="Precio máximo"
                   className="input-field pl-12"
+                  min="0"
                 />
               </div>
             </div>
@@ -321,18 +336,15 @@ const Properties = () => {
             <div>
               <div className="relative">
                 <Bed className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <select
+                <input
+                  type="number"
                   name="bedrooms"
                   value={filters.bedrooms}
                   onChange={handleFilterChange}
+                  placeholder="Habitaciones mínimas"
                   className="input-field pl-12"
-                >
-                  <option value="">Cualquier habitación</option>
-                  <option value="1">1+ habitación</option>
-                  <option value="2">2+ habitaciones</option>
-                  <option value="3">3+ habitaciones</option>
-                  <option value="4">4+ habitaciones</option>
-                </select>
+                  min="0"
+                />
               </div>
             </div>
           </div>

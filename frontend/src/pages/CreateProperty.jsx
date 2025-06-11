@@ -11,8 +11,8 @@ const CreateProperty = () => {
     address: '',
     city: '',
     price: '',
-    bedrooms: 1,
-    bathrooms: 1,
+    bedrooms: '',
+    bathrooms: '',
     images: []
   })
 
@@ -29,9 +29,38 @@ const CreateProperty = () => {
       })
     }
 
+    let processedValue = value
+
+    // Procesamiento específico según el campo
+    if (type === 'number') {
+      if (name === 'bedrooms' || name === 'bathrooms') {
+        // Solo permitir enteros positivos para habitaciones y baños
+        if (value === '') {
+          processedValue = ''
+        } else {
+          const intValue = parseInt(value)
+          if (isNaN(intValue) || intValue < 0) {
+            return // No actualizar si es inválido
+          }
+          processedValue = intValue
+        }
+      } else if (name === 'price') {
+        // Para precio, permitir decimales
+        if (value === '') {
+          processedValue = ''
+        } else {
+          const floatValue = parseFloat(value)
+          if (isNaN(floatValue) || floatValue < 0) {
+            return // No actualizar si es inválido
+          }
+          processedValue = floatValue
+        }
+      }
+    }
+
     setFormData({
       ...formData,
-      [name]: type === 'number' ? (value === '' ? '' : parseInt(value) || '') : value
+      [name]: processedValue
     })
   }
 
@@ -69,21 +98,33 @@ const CreateProperty = () => {
       const priceNum = parseFloat(formData.price)
       if (isNaN(priceNum) || priceNum <= 0) {
         newErrors.price = 'El precio debe ser un número mayor a 0'
-      } else if (priceNum < 50) {
-        newErrors.price = 'El precio debe ser al menos €50'
-      } else if (priceNum > 10000) {
-        newErrors.price = 'El precio no puede ser mayor a €10,000'
+      } else if (priceNum > 5000000) {
+        newErrors.price = 'El precio no puede ser mayor a €5,000,000'
       }
     }
 
     // Validar habitaciones
-    if (!formData.bedrooms || formData.bedrooms < 1) {
-      newErrors.bedrooms = 'Debe tener al menos 1 habitación'
+    if (!formData.bedrooms || formData.bedrooms === '') {
+      newErrors.bedrooms = 'El número de habitaciones es obligatorio'
+    } else {
+      const bedroomsNum = parseInt(formData.bedrooms)
+      if (isNaN(bedroomsNum) || bedroomsNum < 1) {
+        newErrors.bedrooms = 'Debe tener al menos 1 habitación'
+      } else if (bedroomsNum > 100) {
+        newErrors.bedrooms = 'Máximo 100 habitaciones'
+      }
     }
 
     // Validar baños
-    if (!formData.bathrooms || formData.bathrooms < 1) {
-      newErrors.bathrooms = 'Debe tener al menos 1 baño'
+    if (!formData.bathrooms || formData.bathrooms === '') {
+      newErrors.bathrooms = 'El número de baños es obligatorio'
+    } else {
+      const bathroomsNum = parseInt(formData.bathrooms)
+      if (isNaN(bathroomsNum) || bathroomsNum < 1) {
+        newErrors.bathrooms = 'Debe tener al menos 1 baño'
+      } else if (bathroomsNum > 100) {
+        newErrors.bathrooms = 'Máximo 100 baños'
+      }
     }
 
     setErrors(newErrors)
@@ -138,7 +179,7 @@ const CreateProperty = () => {
 
       if (response.ok) {
         toast.success('¡Propiedad creada exitosamente!')
-        window.location.href = '/properties'
+        window.location.href = '/dashboard'
       } else {
         const errorData = await response.text()
         toast.error(errorData || 'Error al crear la propiedad')
@@ -358,8 +399,8 @@ const CreateProperty = () => {
                       onChange={handleChange}
                       className={`input-field pl-12 ${errors.price ? 'border-red-500' : ''}`}
                       placeholder="800"
-                      min="50"
-                      max="10000"
+                      min="0"
+                      max="5000000"
                       step="0.01"
                     />
                   </div>
@@ -367,7 +408,7 @@ const CreateProperty = () => {
                     <p className="text-red-500 text-sm mt-1">{errors.price}</p>
                   )}
                   <p className="text-gray-500 text-sm mt-1">
-                    Entre €50 y €10,000
+                    Máximo €5,000,000
                   </p>
                 </div>
 
@@ -377,21 +418,24 @@ const CreateProperty = () => {
                   </label>
                   <div className="relative">
                     <Bed className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <select
+                    <input
+                      type="number"
                       id="bedrooms"
                       name="bedrooms"
                       value={formData.bedrooms}
                       onChange={handleChange}
                       className={`input-field pl-12 ${errors.bedrooms ? 'border-red-500' : ''}`}
-                    >
-                      {[1, 2, 3, 4, 5, 6].map(num => (
-                        <option key={num} value={num}>{num} habitación{num > 1 ? 'es' : ''}</option>
-                      ))}
-                    </select>
+                      placeholder="Número de habitaciones"
+                      min="1"
+                      max="100"
+                    />
                   </div>
                   {errors.bedrooms && (
                     <p className="text-red-500 text-sm mt-1">{errors.bedrooms}</p>
                   )}
+                  <p className="text-gray-500 text-sm mt-1">
+                    Entre 1 y 100 habitaciones
+                  </p>
                 </div>
 
                 <div>
@@ -400,21 +444,24 @@ const CreateProperty = () => {
                   </label>
                   <div className="relative">
                     <Bath className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <select
+                    <input
+                      type="number"
                       id="bathrooms"
                       name="bathrooms"
                       value={formData.bathrooms}
                       onChange={handleChange}
                       className={`input-field pl-12 ${errors.bathrooms ? 'border-red-500' : ''}`}
-                    >
-                      {[1, 2, 3, 4].map(num => (
-                        <option key={num} value={num}>{num} baño{num > 1 ? 's' : ''}</option>
-                      ))}
-                    </select>
+                      placeholder="Número de baños"
+                      min="1"
+                      max="100"
+                    />
                   </div>
                   {errors.bathrooms && (
                     <p className="text-red-500 text-sm mt-1">{errors.bathrooms}</p>
                   )}
+                  <p className="text-gray-500 text-sm mt-1">
+                    Entre 1 y 100 baños
+                  </p>
                 </div>
               </div>
             </div>
@@ -475,7 +522,8 @@ const CreateProperty = () => {
             <li>• Usa un título descriptivo y atractivo (mínimo 5 caracteres)</li>
             <li>• Escribe una descripción detallada (mínimo 20 caracteres)</li>
             <li>• Puedes agregar imágenes usando URLs de servicios como Imgur</li>
-            <li>• Asegúrate de que el precio sea competitivo (€50 - €10,000)</li>
+            <li>• El precio máximo permitido es €5,000,000</li>
+            <li>• Habitaciones y baños: entre 1 y 100 (números enteros)</li>
             <li>• Verifica que la dirección y ciudad sean correctas</li>
             <li>• Los campos marcados con * son obligatorios</li>
           </ul>

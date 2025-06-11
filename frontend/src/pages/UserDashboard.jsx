@@ -3,9 +3,8 @@ import { motion } from 'framer-motion'
 import { 
   User, Building, Key, Euro, Plus, TrendingUp, Calendar, 
   MapPin, Home, Settings, Percent, BarChart3, Target,
-  CheckCircle, Clock, XCircle, Eye, Edit, Search
+  CheckCircle, Clock, XCircle, Eye, Edit, Search, Check, X
 } from 'lucide-react'
-import api from '../services/api'
 import toast from 'react-hot-toast'
 
 const UserDashboard = () => {
@@ -15,129 +14,199 @@ const UserDashboard = () => {
   const [receivedRequests, setReceivedRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+  
+  // Estados para selección de propiedades
+  const [selectedProperties, setSelectedProperties] = useState([])
+  const [showDiscountModal, setShowDiscountModal] = useState(false)
+  const [discountPercentage, setDiscountPercentage] = useState('')
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (userData) {
-      setUser(JSON.parse(userData))
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        console.log('👤 Usuario cargado:', parsedUser)
+        fetchUserData(parsedUser)
+      } catch (error) {
+        console.error('Error parsing user data:', error)
+        toast.error('Error al cargar datos del usuario')
+        setLoading(false)
+      }
+    } else {
+      console.log('❌ No hay datos de usuario en localStorage')
+      setLoading(false)
     }
-    fetchUserData()
   }, [])
 
-  const fetchUserData = async () => {
+  const fetchUserData = async (userData) => {
+    console.log('🔄 Iniciando fetchUserData para:', userData.username)
     setLoading(true)
     try {
       await Promise.all([
-        fetchMyProperties(),
+        fetchMyProperties(userData.username),
         fetchMyRentals(),
         fetchReceivedRequests()
       ])
     } catch (error) {
+      console.error('Error fetching user data:', error)
       toast.error('Error al cargar datos')
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchMyProperties = async () => {
+  const fetchMyProperties = async (username) => {
     try {
-      const response = await api.get('/api/properties')
-      const allProperties = response.data
-      const userProperties = allProperties.filter(p => p.ownerUsername === user?.username)
+      console.log('🏠 Buscando propiedades de:', username)
+      
+      const response = await fetch('/api/properties', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const allProperties = await response.json()
+      console.log('📋 Todas las propiedades:', allProperties)
+      
+      const userProperties = allProperties.filter(p => p.ownerUsername === username)
+      console.log('🏡 Propiedades del usuario:', userProperties)
+      
       setMyProperties(userProperties)
+      // Limpiar selecciones cuando se actualizan las propiedades
+      setSelectedProperties([])
     } catch (error) {
       console.error('Error fetching properties:', error)
+      toast.error('Error al cargar propiedades')
     }
   }
 
   const fetchMyRentals = async () => {
     try {
-      const response = await api.get('/api/rentals/my-requests')
-      setMyRentals(response.data)
+      console.log('🔑 Obteniendo mis solicitudes...')
+      
+      const response = await fetch('/api/rentals/my-requests', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const rentals = await response.json()
+      console.log('📝 Mis solicitudes:', rentals)
+      setMyRentals(rentals)
     } catch (error) {
       console.error('Error fetching rentals:', error)
+      toast.error('Error al cargar solicitudes')
     }
   }
 
   const fetchReceivedRequests = async () => {
     try {
-      const response = await api.get('/api/rentals/property-requests')
-      setReceivedRequests(response.data)
+      console.log('📥 Obteniendo solicitudes recibidas...')
+      
+      const response = await fetch('/api/rentals/property-requests', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const requests = await response.json()
+      console.log('📨 Solicitudes recibidas:', requests)
+      setReceivedRequests(requests)
     } catch (error) {
       console.error('Error fetching received requests:', error)
+      toast.error('Error al cargar solicitudes recibidas')
     }
   }
 
-  // Funciones de usuario para gestionar sus propiedades
-  const handleDiscountToMyProperties = async () => {
-    if (myProperties.length === 0) {
-      toast.error('No tienes propiedades para aplicar descuento')
+  // Funciones para selección de propiedades
+  const togglePropertySelection = (propertyId) => {
+    setSelectedProperties(prev => 
+      prev.includes(propertyId) 
+        ? prev.filter(id => id !== propertyId)
+        : [...prev, propertyId]
+    )
+  }
+
+  const selectAllProperties = () => {
+    setSelectedProperties(myProperties.map(p => p.id))
+  }
+
+  const clearSelection = () => {
+    setSelectedProperties([])
+  }
+
+  // Función de descuento mejorada con selección
+  const handleApplyDiscountToSelected = async () => {
+    if (selectedProperties.length === 0) {
+      toast.error('Selecciona al menos una propiedad')
       return
     }
 
-    const discount = prompt('¿Qué porcentaje de descuento quieres aplicar a todas tus propiedades? (0-50):')
-    if (!discount) return
-
-    const discountNum = parseFloat(discount)
+    const discountNum = parseFloat(discountPercentage)
     if (isNaN(discountNum) || discountNum < 0 || discountNum > 50) {
       toast.error('El descuento debe estar entre 0% y 50%')
       return
     }
 
-    if (!window.confirm(`¿Aplicar ${discount}% de descuento a todas tus ${myProperties.length} propiedades?`)) return
+    if (!window.confirm(`¿Aplicar ${discountPercentage}% de descuento a ${selectedProperties.length} propiedades seleccionadas?`)) {
+      return
+    }
 
     try {
-      // Aplicar descuento solo a las propiedades del usuario
+      console.log('💰 Aplicando descuento del', discountPercentage, '% a', selectedProperties.length, 'propiedades')
+      
       const discountFactor = 1 - (discountNum / 100)
+      let updatedCount = 0
       
-      for (const property of myProperties) {
-        const newPrice = (property.price * discountFactor).toFixed(2)
-        await api.put(`/api/properties/${property.id}`, {
-          ...property,
-          price: parseFloat(newPrice)
+      const selectedPropsData = myProperties.filter(p => selectedProperties.includes(p.id))
+      
+      for (const property of selectedPropsData) {
+        const newPrice = parseFloat((property.price * discountFactor).toFixed(2))
+        
+        const response = await fetch(`/api/properties/${property.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            ...property,
+            price: newPrice
+          })
         })
+
+        if (response.ok) {
+          updatedCount++
+          console.log(`✅ Propiedad ${property.id} actualizada: €${property.price} → €${newPrice}`)
+        } else {
+          console.error(`❌ Error actualizando propiedad ${property.id}`)
+        }
       }
 
-      toast.success(`Descuento del ${discount}% aplicado a ${myProperties.length} propiedades`)
-      fetchMyProperties()
+      toast.success(`Descuento del ${discountPercentage}% aplicado a ${updatedCount} propiedades`)
+      setShowDiscountModal(false)
+      setDiscountPercentage('')
+      setSelectedProperties([])
+      
+      if (user) {
+        fetchMyProperties(user.username)
+      }
     } catch (error) {
+      console.error('Error aplicando descuento:', error)
       toast.error('Error al aplicar descuento')
-    }
-  }
-
-  const handleAdjustMyPrices = async () => {
-    if (myProperties.length === 0) {
-      toast.error('No tienes propiedades para ajustar precios')
-      return
-    }
-
-    const adjustment = prompt('¿Qué porcentaje de ajuste quieres aplicar? (Ejemplo: 5 para subir 5%, -3 para bajar 3%):')
-    if (!adjustment) return
-
-    const adjustmentNum = parseFloat(adjustment)
-    if (isNaN(adjustmentNum) || adjustmentNum < -50 || adjustmentNum > 50) {
-      toast.error('El ajuste debe estar entre -50% y +50%')
-      return
-    }
-
-    const action = adjustmentNum > 0 ? 'incrementar' : 'reducir'
-    if (!window.confirm(`¿${action} precios en ${Math.abs(adjustmentNum)}% para todas tus propiedades?`)) return
-
-    try {
-      const adjustmentFactor = 1 + (adjustmentNum / 100)
-      
-      for (const property of myProperties) {
-        const newPrice = (property.price * adjustmentFactor).toFixed(2)
-        await api.put(`/api/properties/${property.id}`, {
-          ...property,
-          price: parseFloat(newPrice)
-        })
-      }
-
-      toast.success(`Precios ${adjustmentNum > 0 ? 'incrementados' : 'reducidos'} en ${Math.abs(adjustmentNum)}%`)
-      fetchMyProperties()
-    } catch (error) {
-      toast.error('Error al ajustar precios')
     }
   }
 
@@ -148,41 +217,32 @@ const UserDashboard = () => {
     if (!window.confirm(`¿Marcar esta propiedad como ${action}?`)) return
 
     try {
+      console.log(`🔄 Cambiando disponibilidad de propiedad ${propertyId} a:`, newStatus)
+      
       const property = myProperties.find(p => p.id === propertyId)
-      await api.put(`/api/properties/${propertyId}`, {
-        ...property,
-        available: newStatus
+      const response = await fetch(`/api/properties/${propertyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          ...property,
+          available: newStatus
+        })
       })
 
-      toast.success(`Propiedad marcada como ${action}`)
-      fetchMyProperties()
+      if (response.ok) {
+        toast.success(`Propiedad marcada como ${action}`)
+        if (user) {
+          fetchMyProperties(user.username)
+        }
+      } else {
+        toast.error('Error al cambiar disponibilidad')
+      }
     } catch (error) {
+      console.error('Error toggling availability:', error)
       toast.error('Error al cambiar disponibilidad')
-    }
-  }
-
-  const handleApproveRequest = async (rentalId) => {
-    const responseMessage = prompt('Mensaje de aprobación (opcional):')
-    
-    try {
-      await api.post(`/api/rentals/${rentalId}/approve?message=${encodeURIComponent(responseMessage || '')}`)
-      toast.success('Solicitud aprobada exitosamente')
-      fetchReceivedRequests()
-      fetchMyProperties()
-    } catch (error) {
-      toast.error('Error al aprobar la solicitud')
-    }
-  }
-
-  const handleRejectRequest = async (rentalId) => {
-    const responseMessage = prompt('Motivo del rechazo (opcional):')
-    
-    try {
-      await api.post(`/api/rentals/${rentalId}/reject?message=${encodeURIComponent(responseMessage || '')}`)
-      toast.success('Solicitud rechazada')
-      fetchReceivedRequests()
-    } catch (error) {
-      toast.error('Error al rechazar la solicitud')
     }
   }
 
@@ -266,77 +326,41 @@ const UserDashboard = () => {
         </motion.div>
       </div>
 
-      {/* Herramientas de Gestión */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="card p-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-            <Settings className="w-6 h-6 mr-2" />
-            Gestión de Precios
-          </h3>
-          <div className="space-y-4">
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <h5 className="font-medium text-gray-800 mb-2">Aplicar Descuento</h5>
-              <p className="text-gray-600 text-sm mb-3">Reduce los precios de todas tus propiedades para atraer más inquilinos.</p>
-              <button
-                onClick={handleDiscountToMyProperties}
-                className="w-full bg-yellow-500 text-white py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors flex items-center justify-center"
-                disabled={myProperties.length === 0}
-              >
-                <Percent className="w-4 h-4 mr-2" />
-                Aplicar Descuento
-              </button>
-            </div>
-            
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <h5 className="font-medium text-gray-800 mb-2">Ajustar Precios</h5>
-              <p className="text-gray-600 text-sm mb-3">Ajusta los precios según el mercado o tus necesidades.</p>
-              <button
-                onClick={handleAdjustMyPrices}
-                className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
-                disabled={myProperties.length === 0}
-              >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Ajustar Precios
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-            <Target className="w-6 h-6 mr-2" />
-            Acciones Rápidas
-          </h3>
-          <div className="space-y-3">
-            <button
-              onClick={() => window.location.href = '/create-property'}
-              className="w-full p-3 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors flex items-center justify-center"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Agregar Nueva Propiedad
-            </button>
-            <button
-              onClick={() => setActiveTab('my-properties')}
-              className="w-full p-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center"
-            >
-              <Building className="w-5 h-5 mr-2" />
-              Gestionar Mis Propiedades
-            </button>
-            <button
-              onClick={() => setActiveTab('requests')}
-              className="w-full p-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors flex items-center justify-center"
-            >
-              <Key className="w-5 h-5 mr-2" />
-              Ver Solicitudes Recibidas
-            </button>
-            <button
-              onClick={() => window.location.href = '/properties'}
-              className="w-full p-3 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors flex items-center justify-center"
-            >
-              <Search className="w-5 h-5 mr-2" />
-              Buscar Propiedades para Alquilar
-            </button>
-          </div>
+      {/* Acciones Rápidas - SIN gestión de precios */}
+      <div className="card p-6">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+          <Target className="w-6 h-6 mr-2" />
+          Acciones Rápidas
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <button
+            onClick={() => window.location.href = '/create-property'}
+            className="p-4 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors flex items-center justify-center"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Agregar Nueva Propiedad
+          </button>
+          <button
+            onClick={() => setActiveTab('my-properties')}
+            className="p-4 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center"
+          >
+            <Building className="w-5 h-5 mr-2" />
+            Gestionar Mis Propiedades
+          </button>
+          <button
+            onClick={() => window.location.href = '/rentals'}
+            className="p-4 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors flex items-center justify-center"
+          >
+            <Key className="w-5 h-5 mr-2" />
+            Ver Solicitudes
+          </button>
+          <button
+            onClick={() => window.location.href = '/properties'}
+            className="p-4 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors flex items-center justify-center"
+          >
+            <Search className="w-5 h-5 mr-2" />
+            Buscar Propiedades para Alquilar
+          </button>
         </div>
       </div>
 
@@ -387,6 +411,44 @@ const UserDashboard = () => {
         </button>
       </div>
 
+      {/* Herramientas de Selección y Descuento */}
+      {myProperties.length > 0 && (
+        <div className="card p-6 bg-yellow-50 border border-yellow-200">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <Percent className="w-5 h-5 mr-2" />
+            Gestión de Precios en Lote
+          </h4>
+          
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <button
+              onClick={selectAllProperties}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Seleccionar Todas
+            </button>
+            <button
+              onClick={clearSelection}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Limpiar Selección
+            </button>
+            <button
+              onClick={() => setShowDiscountModal(true)}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+              disabled={selectedProperties.length === 0}
+            >
+              Aplicar Descuento ({selectedProperties.length})
+            </button>
+          </div>
+          
+          {selectedProperties.length > 0 && (
+            <div className="text-sm text-yellow-700">
+              ✓ {selectedProperties.length} propiedades seleccionadas
+            </div>
+          )}
+        </div>
+      )}
+
       {myProperties.length === 0 ? (
         <div className="text-center py-20">
           <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -411,7 +473,12 @@ const UserDashboard = () => {
             <motion.div
               key={property.id}
               whileHover={{ y: -5 }}
-              className="card p-6"
+              className={`card p-6 cursor-pointer transition-all duration-300 ${
+                selectedProperties.includes(property.id) 
+                  ? 'ring-2 ring-yellow-500 bg-yellow-50' 
+                  : ''
+              }`}
+              onClick={() => togglePropertySelection(property.id)}
             >
               <div className="relative mb-4">
                 {property.images && property.images.length > 0 ? (
@@ -429,7 +496,12 @@ const UserDashboard = () => {
                   <Home className="w-12 h-12 text-white" />
                 </div>
                 
-                <div className="absolute top-3 right-3">
+                <div className="absolute top-3 right-3 flex space-x-2">
+                  {selectedProperties.includes(property.id) && (
+                    <div className="bg-yellow-500 text-white p-1 rounded-full">
+                      <Check className="w-4 h-4" />
+                    </div>
+                  )}
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     property.available ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                   }`}>
@@ -450,7 +522,7 @@ const UserDashboard = () => {
                 <span>{property.bathrooms} baños</span>
               </div>
 
-              <div className="flex space-x-2">
+              <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => window.location.href = `/properties/${property.id}`}
                   className="flex-1 px-3 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center"
@@ -473,134 +545,74 @@ const UserDashboard = () => {
           ))}
         </div>
       )}
-    </div>
-  )
 
-  const renderRequests = () => (
-    <div className="space-y-6">
-      <h3 className="text-2xl font-semibold text-gray-800">Solicitudes Recibidas ({receivedRequests.length})</h3>
-      
-      {receivedRequests.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Key className="w-12 h-12 text-gray-400" />
-          </div>
-          <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-            No tienes solicitudes pendientes
-          </h3>
-          <p className="text-gray-600">
-            Las solicitudes para tus propiedades aparecerán aquí
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {receivedRequests.map((request) => (
-            <div key={request.id} className="card p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h4 className="text-xl font-semibold text-gray-800">{request.propertyTitle}</h4>
-                      <div className="flex items-center mt-1 text-gray-600">
-                        <User className="w-4 h-4 mr-1" />
-                        <span>Solicitante: {request.tenantUsername}</span>
-                      </div>
-                      <p className="text-gray-600 text-sm mt-1">
-                        Solicitud recibida el {formatDate(request.createdAt)}
-                      </p>
-                    </div>
-                    
-                    <span className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                      request.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                      request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {getStatusIcon(request.status)}
-                      <span className="ml-2">
-                        {request.status === 'APPROVED' ? 'Aprobada' :
-                         request.status === 'REJECTED' ? 'Rechazada' : 'Pendiente'}
-                      </span>
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
-                    <div className="flex items-center text-gray-600">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      <div>
-                        <span className="font-medium">Desde:</span> {formatDate(request.startDate)}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center text-gray-600">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      <div>
-                        <span className="font-medium">Hasta:</span> {formatDate(request.endDate)}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center text-gray-600">
-                      <Euro className="w-4 h-4 mr-2" />
-                      <div>
-                        <span className="font-medium">Propuesta:</span> €{request.monthlyRent}/mes
-                      </div>
-                    </div>
-                  </div>
-
-                  {request.requestMessage && (
-                    <div className="bg-blue-50 p-3 rounded-lg mb-4">
-                      <p className="text-sm text-blue-600 font-medium mb-1">Mensaje del solicitante:</p>
-                      <p className="text-blue-700">{request.requestMessage}</p>
-                    </div>
-                  )}
-
-                  {request.responseMessage && (
-                    <div className={`p-3 rounded-lg ${request.status === 'APPROVED' ? 'bg-green-50' : 'bg-red-50'}`}>
-                      <p className={`text-sm font-medium mb-1 ${request.status === 'APPROVED' ? 'text-green-600' : 'text-red-600'}`}>
-                        Tu respuesta:
-                      </p>
-                      <p className={request.status === 'APPROVED' ? 'text-green-700' : 'text-red-700'}>
-                        {request.responseMessage}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  {request.status === 'PENDING' && (
-                    <>
-                      <button
-                        onClick={() => handleRejectRequest(request.id)}
-                        className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors duration-300"
-                      >
-                        Rechazar
-                      </button>
-                      <button
-                        onClick={() => handleApproveRequest(request.id)}
-                        className="px-4 py-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors duration-300"
-                      >
-                        Aprobar
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => window.location.href = `/properties/${request.propertyId}`}
-                    className="px-4 py-2 bg-primary-100 text-primary-600 rounded-lg hover:bg-primary-200 transition-colors duration-300"
-                  >
-                    Ver Propiedad
-                  </button>
-                </div>
-              </div>
+      {/* Modal de Descuento */}
+      {showDiscountModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+              Aplicar Descuento a {selectedProperties.length} Propiedades
+            </h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Porcentaje de Descuento (0-50%)
+              </label>
+              <input
+                type="number"
+                value={discountPercentage}
+                onChange={(e) => setDiscountPercentage(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                placeholder="Ej: 10"
+                min="0"
+                max="50"
+              />
             </div>
-          ))}
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowDiscountModal(false)
+                  setDiscountPercentage('')
+                }}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleApplyDiscountToSelected}
+                className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+              >
+                Aplicar Descuento
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   )
 
+  if (!user && !loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">No hay datos de usuario</h2>
+          <p className="text-gray-600 mb-4">No se pudieron cargar los datos del usuario.</p>
+          <button onClick={() => window.location.href = '/login'} className="btn-primary">
+            Ir a Login
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando datos del dashboard...</p>
+        </div>
       </div>
     )
   }
@@ -626,7 +638,7 @@ const UserDashboard = () => {
           </p>
         </motion.div>
 
-        {/* Tabs */}
+        {/* Tabs - Solo 2 tabs ahora */}
         <div className="flex justify-center mb-8">
           <div className="flex bg-gray-100 rounded-xl p-1">
             <button
@@ -651,21 +663,10 @@ const UserDashboard = () => {
               <Building className="w-5 h-5 mr-2 inline" />
               Mis Propiedades ({myProperties.length})
             </button>
-            <button
-              onClick={() => setActiveTab('requests')}
-              className={`px-6 py-3 rounded-lg transition-all duration-300 ${
-                activeTab === 'requests'
-                  ? 'bg-white text-primary-600 shadow-md'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Key className="w-5 h-5 mr-2 inline" />
-              Solicitudes ({receivedRequests.length})
-            </button>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content - Solo 2 contenidos */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -673,7 +674,6 @@ const UserDashboard = () => {
         >
           {activeTab === 'overview' && renderOverview()}
           {activeTab === 'my-properties' && renderMyProperties()}
-          {activeTab === 'requests' && renderRequests()}
         </motion.div>
 
         {/* Información útil */}
