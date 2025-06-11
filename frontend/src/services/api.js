@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: '', // ✅ CAMBIO PRINCIPAL - usar rutas relativas
   headers: {
     'Content-Type': 'application/json',
   },
