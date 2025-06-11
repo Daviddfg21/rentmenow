@@ -8,6 +8,7 @@ const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [currentPath, setCurrentPath] = useState('')
   const userMenuRef = useRef(null)
 
   useEffect(() => {
@@ -26,6 +27,19 @@ const Navbar = () => {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
       }
+    }
+
+    // Set current path
+    setCurrentPath(window.location.pathname)
+
+    // Listen for path changes
+    const handlePathChange = () => {
+      setCurrentPath(window.location.pathname)
+    }
+
+    window.addEventListener('popstate', handlePathChange)
+    return () => {
+      window.removeEventListener('popstate', handlePathChange)
     }
   }, [])
 
@@ -47,6 +61,7 @@ const Navbar = () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
     setIsOpen(false)
     setUserMenuOpen(false)
+    setCurrentPath(path)
   }
 
   const handleLogout = () => {
@@ -64,12 +79,18 @@ const Navbar = () => {
     setUserMenuOpen(!userMenuOpen)
   }
 
+  const isActivePath = (path) => {
+    if (path === '/' && currentPath === '/') return true
+    if (path !== '/' && currentPath.startsWith(path)) return true
+    return false
+  }
+
   const navItems = [
     { name: 'Inicio', path: '/', icon: Home },
     { name: 'Propiedades', path: '/properties', icon: Building },
     ...(isAuthenticated ? [
       { name: 'Mi Dashboard', path: '/dashboard', icon: BarChart3 },
-      { name: 'Solicitudes', path: '/rentals', icon: Key }, // CAMBIADO DE "Mis Alquileres" A "Solicitudes"
+      { name: 'Solicitudes', path: '/rentals', icon: Key },
       { name: 'Crear Propiedad', path: '/create-property', icon: Plus },
       ...(isAdmin ? [{ name: 'Admin', path: '/admin', icon: Settings }] : [])
     ] : [])
@@ -95,18 +116,48 @@ const Navbar = () => {
           </motion.div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => (
-              <motion.div key={item.path} whileHover={{ y: -2 }}>
-                <button
-                  onClick={() => navigateTo(item.path)}
-                  className="flex items-center space-x-1 text-gray-700 hover:text-primary-600 transition-colors duration-300"
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </button>
-              </motion.div>
-            ))}
+          <div className="hidden md:flex items-center space-x-2">
+            {navItems.map((item) => {
+              const isActive = isActivePath(item.path)
+              return (
+                <motion.div key={item.path} className="relative">
+                  <button
+                    onClick={() => navigateTo(item.path)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-300 relative ${
+                      isActive 
+                        ? 'text-white shadow-lg' 
+                        : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
+                    }`}
+                  >
+                    {/* Background gradient for active item */}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeNavItem"
+                        className="absolute inset-0 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-xl"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    
+                    {/* Content */}
+                    <div className="relative z-10 flex items-center space-x-2">
+                      <item.icon className="w-4 h-4" />
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                    
+                    {/* Active indicator dot */}
+                    {isActive && (
+                      <motion.div
+                        className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.1 }}
+                      />
+                    )}
+                  </button>
+                </motion.div>
+              )
+            })}
           </div>
 
           {/* User Menu */}
@@ -244,16 +295,30 @@ const Navbar = () => {
             className="md:hidden bg-white/95 backdrop-blur-md border-t border-gray-200"
           >
             <div className="px-2 pt-2 pb-3 space-y-1">
-              {navItems.map((item) => (
-                <button
-                  key={item.path}
-                  onClick={() => navigateTo(item.path)}
-                  className="flex items-center space-x-2 px-3 py-2 text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-300 w-full text-left"
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </button>
-              ))}
+              {navItems.map((item) => {
+                const isActive = isActivePath(item.path)
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => navigateTo(item.path)}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300 w-full text-left ${
+                      isActive 
+                        ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-lg' 
+                        : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span className="font-medium">{item.name}</span>
+                    {isActive && (
+                      <motion.div
+                        className="ml-auto w-2 h-2 bg-white rounded-full"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                      />
+                    )}
+                  </button>
+                )
+              })}
               
               {isAuthenticated ? (
                 <div className="border-t pt-2 mt-2">
