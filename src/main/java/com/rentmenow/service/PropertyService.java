@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Service
 @Transactional
@@ -96,14 +97,102 @@ public class PropertyService {
 		propertyRepository.deleteById(id);
 	}
 
+	/**
+	 * OPERACIÓN TRANSACCIONAL: Aplicar descuento por ciudad Esta operación
+	 * actualiza múltiples propiedades de forma atómica
+	 */
 	@Transactional
-	public void applyDiscountToCity(String city, Double discountPercentage) {
+	public String applyDiscountToCity(String city, Double discountPercentage) {
 		List<Property> properties = propertyRepository.findByCity(city);
-		properties.forEach(property -> {
-			Double discountFactor = 1 - (discountPercentage / 100);
-			property.setPrice(property.getPrice().multiply(java.math.BigDecimal.valueOf(discountFactor)));
-		});
+
+		if (properties.isEmpty()) {
+			throw new RuntimeException("No se encontraron propiedades en la ciudad: " + city);
+		}
+
+		if (discountPercentage < 0 || discountPercentage > 50) {
+			throw new RuntimeException("El descuento debe estar entre 0% y 50%");
+		}
+
+		int updatedCount = 0;
+		Double discountFactor = 1 - (discountPercentage / 100);
+
+		for (Property property : properties) {
+			BigDecimal oldPrice = property.getPrice();
+			BigDecimal newPrice = oldPrice.multiply(BigDecimal.valueOf(discountFactor));
+			property.setPrice(newPrice);
+			updatedCount++;
+		}
+
 		propertyRepository.saveAll(properties);
+
+		return String.format("Descuento del %.1f%% aplicado a %d propiedades en %s", discountPercentage, updatedCount,
+				city);
+	}
+
+	/**
+	 * OPERACIÓN TRANSACCIONAL: Actualización masiva de disponibilidad Útil para
+	 * operaciones administrativas de fin de mes
+	 */
+	@Transactional
+	public String updateAvailabilityByOwner(String ownerUsername, boolean available) {
+		User owner = userRepository.findByUsername(ownerUsername)
+				.orElseThrow(() -> new RuntimeException("Propietario no encontrado"));
+
+		List<Property> properties = propertyRepository.findByOwnerId(owner.getId());
+
+		if (properties.isEmpty()) {
+			throw new RuntimeException("El usuario no tiene propiedades registradas");
+		}
+
+		int updatedCount = 0;
+		for (Property property : properties) {
+			if (property.getAvailable() != available) {
+				property.setAvailable(available);
+				if (!available) {
+					property.setOccupiedUntil(LocalDateTime.now().plusMonths(1));
+				} else {
+					property.setOccupiedUntil(null);
+				}
+				updatedCount++;
+			}
+		}
+
+		propertyRepository.saveAll(properties);
+
+		String status = available ? "disponibles" : "ocupadas";
+		return String.format("%d propiedades de %s marcadas como %s", updatedCount, ownerUsername, status);
+	}
+
+	/**
+	 * OPERACIÓN TRANSACCIONAL: Incremento de precios por inflación Operación
+	 * administrativa útil para ajustes anuales
+	 */
+	@Transactional
+	public String applyInflationAdjustment(Double inflationPercentage) {
+		if (inflationPercentage < 0 || inflationPercentage > 20) {
+			throw new RuntimeException("El ajuste por inflación debe estar entre 0% y 20%");
+		}
+
+		List<Property> allProperties = propertyRepository.findAll();
+
+		if (allProperties.isEmpty()) {
+			throw new RuntimeException("No hay propiedades en el sistema");
+		}
+
+		Double adjustmentFactor = 1 + (inflationPercentage / 100);
+
+		for (Property property : allProperties) {
+			BigDecimal oldPrice = property.getPrice();
+			BigDecimal newPrice = oldPrice.multiply(BigDecimal.valueOf(adjustmentFactor));
+			// Redondear a 2 decimales
+			newPrice = newPrice.setScale(2, BigDecimal.ROUND_HALF_UP);
+			property.setPrice(newPrice);
+		}
+
+		propertyRepository.saveAll(allProperties);
+
+		return String.format("Ajuste por inflación del %.1f%% aplicado a %d propiedades", inflationPercentage,
+				allProperties.size());
 	}
 
 	public void markPropertyAsOccupied(Long propertyId, LocalDateTime occupiedUntil) {

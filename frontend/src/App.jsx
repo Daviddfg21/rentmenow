@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -10,6 +11,7 @@ import CreateProperty from './pages/CreateProperty'
 import Rentals from './pages/Rentals'
 import CreateRental from './pages/CreateRental'
 import AdminDashboard from './pages/AdminDashboard'
+import UserDashboard from './pages/UserDashboard'
 import UserProfile from './pages/UserProfile'
 
 function App() {
@@ -46,6 +48,7 @@ function App() {
     else if (path === '/rentals') setCurrentPage('rentals')
     else if (path.startsWith('/create-rental/')) setCurrentPage('create-rental')
     else if (path === '/admin') setCurrentPage('admin')
+    else if (path === '/dashboard') setCurrentPage('dashboard')
     else if (path === '/profile') setCurrentPage('profile')
     else setCurrentPage('home')
 
@@ -64,6 +67,7 @@ function App() {
       else if (path === '/rentals') setCurrentPage('rentals')
       else if (path.startsWith('/create-rental/')) setCurrentPage('create-rental')
       else if (path === '/admin') setCurrentPage('admin')
+      else if (path === '/dashboard') setCurrentPage('dashboard')
       else if (path === '/profile') setCurrentPage('profile')
       else setCurrentPage('home')
     }
@@ -98,6 +102,8 @@ function App() {
         return isAuthenticated ? <CreateRental /> : <Login />
       case 'admin':
         return isAuthenticated && user?.role === 'ADMIN' ? <AdminDashboard /> : <Home />
+      case 'dashboard':
+        return isAuthenticated ? <UserDashboard /> : <Login />
       case 'profile':
         return isAuthenticated ? <UserProfile username={user?.username} isOwnProfile={true} /> : <Login />
       default:
@@ -106,11 +112,12 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
       <Navbar />
-      <div className="min-h-screen">
+      <div className="flex-1">
         {renderPage()}
       </div>
+      <Footer />
       <Toaster 
         position="top-center"
         toastOptions={{
